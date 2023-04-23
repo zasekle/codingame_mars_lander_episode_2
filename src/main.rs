@@ -113,38 +113,102 @@ fn main() {
     //#4
     // 0,1000 300,1500 350,1400 500,2000 800,1800 1000,2500 1200,2100 1500,2400 2000,1000 2200,500 2500,100 2900,800 3000,500 3200,1000 3500,2000 3800,800 4000,200 5000,200 5500,1500 6999,2800
     // 500 2700
-    let ground_points = [
-        Point { x:0, y:1000 },
-        Point { x:300, y:1500 },
-        Point { x:350, y:1400 },
-        Point { x:500, y:2000 },
-        Point { x:800, y:1800 },
-        Point { x:1000,y:2500 },
-        Point { x:1200,y:2100 },
-        Point { x:1500,y:2400 },
-        Point { x:2000,y:1000 },
-        Point { x:2200,y:500 },
-        Point { x:2500,y:100 },
-        Point { x:2900,y:800 },
-        Point { x:3000,y:500 },
-        Point { x:3200,y:1000 },
-        Point { x:3500,y:2000 },
-        Point { x:3800,y:800 },
-        Point { x:4000,y:200 },
-        Point { x:5000,y:200 },
-        Point { x:5500,y:1500 },
-        Point { x:6999,y:2800 },
-    ];
-    let shuttle_point = Point {
-        x: 500,
-        y: 2700,
-    };
-    let first_flat_index = 16;
-    let second_flat_index = 17;
+    // let ground_points = [
+    //     Point { x: 0, y: 1000 },
+    //     Point { x: 300, y: 1500 },
+    //     Point { x: 350, y: 1400 },
+    //     Point { x: 500, y: 2000 },
+    //     Point { x: 800, y: 1800 },
+    //     Point { x: 1000, y: 2500 },
+    //     Point { x: 1200, y: 2100 },
+    //     Point { x: 1500, y: 2400 },
+    //     Point { x: 2000, y: 1000 },
+    //     Point { x: 2200, y: 500 },
+    //     Point { x: 2500, y: 100 },
+    //     Point { x: 2900, y: 800 },
+    //     Point { x: 3000, y: 500 },
+    //     Point { x: 3200, y: 1000 },
+    //     Point { x: 3500, y: 2000 },
+    //     Point { x: 3800, y: 800 },
+    //     Point { x: 4000, y: 200 },
+    //     Point { x: 5000, y: 200 },
+    //     Point { x: 5500, y: 1500 },
+    //     Point { x: 6999, y: 2800 },
+    // ];
+    // let shuttle_point = Point {
+    //     x: 500,
+    //     y: 2700,
+    // };
+    // let first_flat_index = 16;
+    // let second_flat_index = 17;
 
     //#5
     // 0,1000 300,1500 350,1400 500,2100 1500,2100 2000,200 2500,500 2900,300 3000,200 3200,1000 3500,500 3800,800 4000,200 4200,800 4800,600 5000,1200 5500,900 6000,500 6500,300 6999,500
     // 6500 2700
+
+    //#1 Episode 3
+    // 0,450 300,750 1000,450 1500,650 1800,850 2000,1950 2200,1850 2400,2000 3100,1800 3150,1550 2500,1600 2200,1550 2100,750 2200,150 3200,150 3500,450 4000,950 4500,1450 5000,1550 5500,1500 6000,950 6999,1750
+    // 6500 2600
+    // let ground_points = [
+    //     Point { x: 0, y: 450 },
+    //     Point { x: 300, y: 750 },
+    //     Point { x: 1000, y: 450 },
+    //     Point { x: 1500, y: 650 },
+    //     Point { x: 1800, y: 850 },
+    //     Point { x: 2000, y: 1950 },
+    //     Point { x: 2200, y: 1850 },
+    //     Point { x: 2400, y: 2000 },
+    //     Point { x: 3100, y: 1800 },
+    //     Point { x: 3150, y: 1550 },
+    //     Point { x: 2500, y: 1600 },
+    //     Point { x: 2200, y: 1550 },
+    //     Point { x: 2100, y: 750 },
+    //     Point { x: 2200, y: 150 },
+    //     Point { x: 3200, y: 150 },
+    //     Point { x: 3500, y: 450 },
+    //     Point { x: 4000, y: 950 },
+    //     Point { x: 4500, y: 1450 },
+    //     Point { x: 5000, y: 1550 },
+    //     Point { x: 5500, y: 1500 },
+    //     Point { x: 6000, y: 950 },
+    //     Point { x: 6999, y: 1750 },
+    // ];
+    // let shuttle_point = Point {
+    //     x: 6500,
+    //     y: 2600,
+    // };
+    // let first_flat_index = 13;
+    // let second_flat_index = 14;
+
+    //#2 Episode 3
+    // 0,1800 300,1200 1000,1550 2000,1200 2500,1650 3700,220 4700,220 4750,1000 4700,1650 4000,1700 3700,1600 3750,1900 4000,2100 4900,2050 5100,1000 5500,500 6200,800 6999,600
+    // 6500 2000
+    let ground_points = [
+        Point { x:0,   y:1800 },
+        Point { x:300, y:1200 },
+        Point { x:1000,y:1550 },
+        Point { x:2000,y:1200 },
+        Point { x:2500,y:1650 },
+        Point { x:3700,y:220 },
+        Point { x:4700,y:220 },
+        Point { x:4750,y:1000 },
+        Point { x:4700,y:1650 },
+        Point { x:4000,y:1700 },
+        Point { x:3700,y:1600 },
+        Point { x:3750,y:1900 },
+        Point { x:4000,y:2100 },
+        Point { x:4900,y:2050 },
+        Point { x:5100,y:1000 },
+        Point { x:5500,y:500 },
+        Point { x:6200,y:800 },
+        Point { x:6999,y:600 },
+    ];
+    let shuttle_point = Point {
+        x: 6500,
+        y: 2000,
+    };
+    let first_flat_index = 5;
+    let second_flat_index = 6;
 
     //Dummy points
     // 0,1000 3000,2000 4000,300 6999,300
@@ -162,17 +226,19 @@ fn main() {
     // let second_flat_index = 3;
 
     //TODO: Finishing up the line
-    // Maybe 'move' the ground out a little bit (or modify something to make it work)
+    // Choose the shortest distance line.
     // Find the lines that connect my 'path'
-    // Still need to choose the shortest distance line.
+    // Maybe 'move' the ground out a little bit (or modify something to make it work)
+    // -Don't move landing area
+    // -Make sure that the lines don't go out of bounds
 
-    //TODO: There are at least 2 things wrong with this
-    // 1) The diagonal lines are not catching the intersections
-    // 2) Still the problem that it isn't working on setting of 200
-    // 3) It is filling the entire map with 'used' even though it seems to be getting the correct
-    //  answer.
-    //  -Probably make sure below tDO is not relevant anywhere else (it could be causing this)
-    //  -Probably refactor function below a little, might be easier to work with
+    //TODO: There are things wrong with this
+    // 1) 250 on #4 doesn't set most of the map, is this ok?
+    //  -The ship might start so low it can't get over the mountain.
+    // 2) Still something wrong with it, not drawing the mountain on Episode 3 #1.
+    // 3) The shuttle seems to start too low in episode 3, so it needs to go up I guess.
+    //  -I think up will have the same problems that right did.
+    //  -If I am going to use up, I probably want to
     let mut final_paths = calculate_line(
         &ground_points,
         first_flat_index,
@@ -231,16 +297,7 @@ fn calculate_line(
         let b = start_point_y_f - m * start_point_x_f;
 
         let start_x = start_point.x / DIVISOR;
-
-        //TODO: Because the end point can hit the VERY EDGE of the line, an extra entire
-        // square can be added.
-        // Is this the best way to handle it?
-        // Is this problem relevant anywhere else?
-        let end_x = if end_point.x % DIVISOR == 0 {
-            (end_point.x - 1) / DIVISOR
-        } else {
-            end_point.x / DIVISOR
-        };
+        let end_x = end_point.x / DIVISOR;
 
         println!("x range {start_x}..={end_x}");
         //The starting point here is a mirror of the end point of the last
@@ -248,14 +305,14 @@ fn calculate_line(
         // member.
         for x in start_x..=end_x {
             let mut y_begin =
-                if x == start_point.x {
+                if x == (start_point.x / DIVISOR) {
                     start_point.y
                 } else {
                     (m * ((x * DIVISOR) as f32) + b) as u32
                 };
 
             let mut y_end =
-                if x == end_point.x {
+                if x == (end_point.x / DIVISOR) {
                     end_point.y
                 } else {
                     (m * (((x + 1) * DIVISOR) as f32) + b) as u32
@@ -307,6 +364,7 @@ fn calculate_line(
         }
         println!("{string}");
     }
+    println!();
 
     let mut paths = Vec::<PathInfo>::new();
 
@@ -365,18 +423,6 @@ fn calculate_line(
       for example the above two paths are not equal, its b/c the lines are different lengths
     **/
     while !paths.is_empty() {
-        // println!("\n\n\n{:?}", paths);
-        // for row in map.iter().rev() {
-        //     let mut string = String::new();
-        //     for ele in row.iter() {
-        //         if ele.has_been_used {
-        //             string.push('L');
-        //         } else {
-        //             string.push('.');
-        //         }
-        //     }
-        //     println!("{string}");
-        // }
         let paths_copy = paths;
         let mut temp_paths = HashMap::<Point, PathInfo>::new();
 
@@ -388,16 +434,59 @@ fn calculate_line(
             // println!("x {final_x} y {final_y}");
             if final_y >= DIVISOR { //down
                 // println!("down");
-
                 let next_y = final_y - DIVISOR;
-                let next_element = &mut map[(next_y / DIVISOR) as usize][(final_x / DIVISOR) as usize];
+                let mut next_element = &mut map[(next_y / DIVISOR) as usize][(final_x / DIVISOR) as usize];
+                if !next_element.has_been_used {
+                    check_if_path_valid(
+                        ground_points,
+                        flat_surface_first_index,
+                        flat_surface_second_index,
+                        &mut next_element,
+                        &mut final_paths,
+                        &mut temp_paths,
+                        &path,
+                        final_x,
+                        next_y,
+                        MoveDirection::DOWN,
+                    );
+                }
+            }
 
-                if !next_element.has_been_used
-                    // || next_element.contains_landing_line
-                {
-                    let mut path_ended = false;
+            if final_x >= DIVISOR { //left
+                // println!("left");
+                let next_x = final_x - DIVISOR;
+                let mut next_element = &mut map[(final_y / DIVISOR) as usize][(next_x / DIVISOR) as usize];
+                if !next_element.has_been_used {
+                    check_if_path_valid(
+                        ground_points,
+                        flat_surface_first_index,
+                        flat_surface_second_index,
+                        &mut next_element,
+                        &mut final_paths,
+                        &mut temp_paths,
+                        &path,
+                        next_x,
+                        final_y,
+                        MoveDirection::LEFT,
+                    );
+                }
+            }
+
+            if final_x + DIVISOR <= 6999 { //right
+                // println!("right");
+                let next_x = final_x + DIVISOR;
+                let next_element = map[(final_y / DIVISOR) as usize][(next_x / DIVISOR) as usize];
+                if !next_element.has_been_used {
+
+                    //TODO: the problem is at 400 1600 it can move right b/c the right final point isn't inclusive
+                    // 1) Move the square conceptually?
+                    // 2) Do a separate check for it.
+                    //Checking right is a bit special because.
+                    // 1) It needs to check the CURRENT block not the next block (handled inside check_if_path_valid).
+                    // 2) It needs to also check the single point in the next block because it will be moving there.
+                    let mut run_func = true;
                     for i in 0..next_element.crossing_lines_idx {
-                        let point_pair = next_element.crossing_lines[i].expect("invalid crossing idx {i}");
+                        let point_pair = next_element.crossing_lines[i].unwrap();
 
                         let start_point_x_f = point_pair.start.x as f32;
                         let start_point_y_f = point_pair.start.y as f32;
@@ -406,66 +495,188 @@ fn calculate_line(
 
                         let m = (end_point_y_f - start_point_y_f) / (end_point_x_f - start_point_x_f);
                         let b = start_point_y_f - m * start_point_x_f;
-                        let x_line = final_x as f32;
 
-                        let y_intersection = (m * x_line + b) as u32;
-
-                        if (y_intersection / DIVISOR) == (next_y / DIVISOR) {
-
-                            path_ended = true;
-
-                            if point_pair.start == ground_points[flat_surface_first_index]
-                                && point_pair.end == ground_points[flat_surface_second_index] {
-                                let mut path_clone = path.clone();
-                                let path_last_val = path_clone.path.last().expect("path empty");
-
-                                path_clone.distance += calculate_dist_for_two_points(
-                                    path_last_val.y,
-                                    y_intersection,
-                                    path_last_val.x,
-                                    final_x,
-                                );
-
-                                path_clone.path.push(
-                                    Point {
-                                        x: final_x,
-                                        y: y_intersection,
-                                    }
-                                );
-
-                                final_paths.push(
-                                    path_clone
-                                );
-                            }
+                        if (m * (next_x as f32) + b) as u32 == final_y {
+                            run_func = false;
+                            break;
                         }
                     }
 
-                    if !path_ended {
-                        let mut path_clone = path.clone();
-                        let path_last_val = path_clone.path.last().expect("path empty");
+                    if run_func {
+                        let mut next_element = &mut map[(final_y / DIVISOR) as usize][(final_x / DIVISOR) as usize];
 
-                        path_clone.distance += calculate_dist_for_two_points(
-                            path_last_val.y,
-                            next_y,
-                            path_last_val.x,
-                            final_x,
+                        check_if_path_valid(
+                            ground_points,
+                            flat_surface_first_index,
+                            flat_surface_second_index,
+                            &mut next_element,
+                            &mut final_paths,
+                            &mut temp_paths,
+                            &path,
+                            next_x,
+                            final_y,
+                            MoveDirection::RIGHT,
                         );
-
-                        let next_point = Point {
-                            x: final_x,
-                            y: next_y,
-                        };
-
-                        let prev_value = temp_paths.get(&next_point);
-
-                        if prev_value.is_none() || prev_value.unwrap().distance > path_clone.distance {
-                            // println!("storing x {final_x} y {next_y}");
-                            path_clone.path.push(next_point);
-                            temp_paths.insert(next_point, path_clone);
-                        }
                     }
                 }
             }
+        }
+
+        for path in temp_paths {
+            let next_element = &mut map[(path.0.y / DIVISOR) as usize][(path.0.x / DIVISOR) as usize];
+            next_element.has_been_used = true;
+            paths.push(path.1);
+        }
+    }
+
+    for row in map.iter().rev() {
+        let mut string = String::new();
+        for ele in row.iter() {
+            if ele.has_been_used {
+                string.push('U');
+            } else {
+                string.push('.');
+            }
+        }
+        println!("{string}");
+    }
+
+    final_paths
+}
+
+#[derive(Debug, PartialEq)]
+enum MoveDirection {
+    LEFT,
+    RIGHT,
+    DOWN,
+}
+
+fn check_if_path_valid(
+    ground_points: &[Point],
+    flat_surface_first_index: usize,
+    flat_surface_second_index: usize,
+    next_element: &mut MapNode,
+    final_paths: &mut Vec<PathInfo>,
+    temp_paths: &mut HashMap<Point, PathInfo>,
+    path: &PathInfo,
+    passed_x: u32,
+    passed_y: u32,
+    move_direction: MoveDirection,
+) {
+    let x_div = 2;
+    let y_div = 8;
+    if passed_x / DIVISOR == x_div && passed_y / DIVISOR == y_div {
+        println!("move_direction {:?}", move_direction);
+    }
+    let mut path_ended = false;
+    for i in 0..next_element.crossing_lines_idx {
+        let point_pair = next_element.crossing_lines[i].expect("invalid crossing idx {i}");
+
+        let start_point_x_f = point_pair.start.x as f32;
+        let start_point_y_f = point_pair.start.y as f32;
+        let end_point_x_f = point_pair.end.x as f32;
+        let end_point_y_f = point_pair.end.y as f32;
+
+        let m = (end_point_y_f - start_point_y_f) / (end_point_x_f - start_point_x_f);
+        let b = start_point_y_f - m * start_point_x_f;
+
+        let (comparator, intersection, x_val, y_val) =
+            if move_direction != MoveDirection::DOWN {
+                //TODO: this is pretty convoluted, having to subtract x from it, might want to add
+                // a passed value for x comparator or something a bit more sensible
+                //TODO: still need to check the single point at the end (need it inclusive)
+                let y_line = passed_y as f32;
+                let comparator =
+                    if move_direction == MoveDirection::RIGHT {
+                        (passed_x / DIVISOR) - 1
+                    } else {
+                        passed_x / DIVISOR
+                    };
+                let x_intersection = ((y_line - b) / m) as u32;
+                (comparator, x_intersection / DIVISOR, x_intersection, passed_y)
+            } else {
+                let x_line = passed_x as f32;
+                let y_intersection = (m * x_line + b) as u32;
+                (passed_y / DIVISOR, y_intersection / DIVISOR, passed_x, y_intersection)
+            };
+
+        //4,10 -> 5,10 goes through a line
+        if passed_x / DIVISOR == x_div && passed_y / DIVISOR == y_div {
+            println!("passed_x {passed_x} passed_y {passed_y}");
+            println!("comparator {comparator} intersection {intersection} move_direction {:?}", move_direction);
+            println!("next_element {:?}", next_element.crossing_lines);
+            println!("point_pair {:?}", point_pair);
+        }
+
+        if comparator == intersection {
+            path_ended = true;
+
+            if point_pair.start == ground_points[flat_surface_first_index]
+                && point_pair.end == ground_points[flat_surface_second_index] {
+                let mut path_clone = path.clone();
+                let path_last_val = path_clone.path.last().expect("path empty");
+
+                path_clone.distance += calculate_dist_for_two_points(
+                    path_last_val.y,
+                    y_val,
+                    path_last_val.x,
+                    x_val,
+                );
+
+                path_clone.path.push(
+                    Point {
+                        x: x_val,
+                        y: y_val,
+                    }
+                );
+
+                final_paths.push(
+                    path_clone
+                );
+            }
+        }
+    }
+
+    if passed_x / DIVISOR == x_div && passed_y / DIVISOR == y_div {
+        println!("passed_x {passed_x} passed_y {passed_y} path_ended {path_ended} move_direction {:?}", move_direction);
+    }
+
+    if !path_ended {
+        let mut path_clone = path.clone();
+        let path_last_val = path_clone.path.last().expect("path empty");
+
+        path_clone.distance += calculate_dist_for_two_points(
+            path_last_val.y,
+            passed_y,
+            path_last_val.x,
+            passed_x,
+        );
+
+        let next_point = Point {
+            x: passed_x,
+            y: passed_y,
+        };
+
+        let prev_value = temp_paths.get(&next_point);
+
+        if prev_value.is_none() || prev_value.unwrap().distance > path_clone.distance {
+            // println!("storing x {next_x} y {final_y}");
+            path_clone.path.push(next_point);
+            temp_paths.insert(next_point, path_clone);
+        }
+    }
+}
+
+fn calculate_dist_for_two_points(
+    y1: u32,
+    y2: u32,
+    x1: u32,
+    x2: u32,
+) -> u32 {
+    ((y2 as i32 - y1 as i32).pow(2) + (x2 as i32 - x1 as i32).pow(2)) as u32
+}
+
+
 /*
             if final_x >= DIVISOR && final_y >= DIVISOR { //down-left
                 println!("down-left");
@@ -661,193 +872,3 @@ fn calculate_line(
                 }
             }
 */
-
-            if final_x >= DIVISOR { //left
-                // println!("left");
-
-                let next_x = final_x - DIVISOR;
-                let next_element = &mut map[(final_y / DIVISOR) as usize][(next_x / DIVISOR) as usize];
-                if !next_element.has_been_used
-                    // || next_element.contains_landing_line
-                {
-                    let mut path_ended = false;
-                    for i in 0..next_element.crossing_lines_idx {
-                        let point_pair = next_element.crossing_lines[i].expect("invalid crossing idx {i}");
-
-                        let start_point_x_f = point_pair.start.x as f32;
-                        let start_point_y_f = point_pair.start.y as f32;
-                        let end_point_x_f = point_pair.end.x as f32;
-                        let end_point_y_f = point_pair.end.y as f32;
-
-                        let m = (end_point_y_f - start_point_y_f) / (end_point_x_f - start_point_x_f);
-                        let b = start_point_y_f - m * start_point_x_f;
-                        let y_line = final_y as f32;
-
-                        let x_intersection = ((y_line - b) / m) as u32;
-
-                        if (x_intersection / DIVISOR) == (next_x / DIVISOR) {
-                            path_ended = true;
-
-                            if point_pair.start == ground_points[flat_surface_first_index]
-                                && point_pair.end == ground_points[flat_surface_second_index] {
-                                let mut path_clone = path.clone();
-                                let path_last_val = path_clone.path.last().expect("path empty");
-
-                                path_clone.distance += calculate_dist_for_two_points(
-                                    path_last_val.y,
-                                    final_y,
-                                    path_last_val.x,
-                                    x_intersection,
-                                );
-
-                                path_clone.path.push(
-                                    Point {
-                                        x: x_intersection,
-                                        y: final_y,
-                                    }
-                                );
-
-                                final_paths.push(
-                                    path_clone
-                                );
-                            }
-                        }
-                    }
-
-                    if !path_ended {
-                        let mut path_clone = path.clone();
-                        let path_last_val = path_clone.path.last().expect("path empty");
-
-                        path_clone.distance += calculate_dist_for_two_points(
-                            path_last_val.y,
-                            final_y,
-                            path_last_val.x,
-                            next_x,
-                        );
-
-                        let next_point = Point {
-                            x: next_x,
-                            y: final_y,
-                        };
-
-                        let prev_value = temp_paths.get(&next_point);
-
-                        if prev_value.is_none() || prev_value.unwrap().distance > path_clone.distance {
-                            // println!("storing x {next_x} y {final_y}");
-                            path_clone.path.push(next_point);
-                            temp_paths.insert(next_point, path_clone);
-                        }
-                    }
-                }
-            }
-
-            if final_x + DIVISOR <= 6999 { //right
-                // println!("right");
-                let next_x = final_x + DIVISOR;
-                let next_element = &mut map[(final_y / DIVISOR) as usize][(next_x / DIVISOR) as usize];
-                if !next_element.has_been_used
-                    // || next_element.contains_landing_line
-                {
-                    let mut path_ended = false;
-                    for i in 0..next_element.crossing_lines_idx {
-                        let point_pair = next_element.crossing_lines[i].expect("invalid crossing idx {i}");
-
-                        let start_point_x_f = point_pair.start.x as f32;
-                        let start_point_y_f = point_pair.start.y as f32;
-                        let end_point_x_f = point_pair.end.x as f32;
-                        let end_point_y_f = point_pair.end.y as f32;
-
-                        let m = (end_point_y_f - start_point_y_f) / (end_point_x_f - start_point_x_f);
-                        let b = start_point_y_f - m * start_point_x_f;
-                        let y_line = final_y as f32;
-
-                        let x_intersection = ((y_line - b) / m) as u32;
-
-                        if (x_intersection / DIVISOR) == (next_x / DIVISOR) {
-                            path_ended = true;
-
-                            if point_pair.start == ground_points[flat_surface_first_index]
-                                && point_pair.end == ground_points[flat_surface_second_index] {
-                                let mut path_clone = path.clone();
-                                let path_last_val = path_clone.path.last().expect("path empty");
-
-                                path_clone.distance += calculate_dist_for_two_points(
-                                    path_last_val.y,
-                                    final_y,
-                                    path_last_val.x,
-                                    x_intersection,
-                                );
-
-                                path_clone.path.push(
-                                    Point {
-                                        x: x_intersection,
-                                        y: final_y,
-                                    }
-                                );
-
-                                final_paths.push(
-                                    path_clone
-                                );
-                            }
-                        }
-                    }
-
-                    if !path_ended {
-                        let mut path_clone = path.clone();
-                        let path_last_val = path_clone.path.last().expect("path empty");
-
-                        path_clone.distance += calculate_dist_for_two_points(
-                            path_last_val.y,
-                            final_y,
-                            path_last_val.x,
-                            next_x,
-                        );
-
-                        let next_point = Point {
-                            x: next_x,
-                            y: final_y,
-                        };
-
-                        let prev_value = temp_paths.get(&next_point);
-
-                        if prev_value.is_none() || prev_value.unwrap().distance > path_clone.distance {
-                            // println!("storing x {next_x} y {final_y}");
-                            path_clone.path.push(next_point);
-                            temp_paths.insert(next_point, path_clone);
-                        }
-                    }
-                }
-            }
-        }
-
-        for path in temp_paths {
-            let next_element = &mut map[(path.0.y / DIVISOR) as usize][(path.0.x / DIVISOR) as usize];
-            next_element.has_been_used = true;
-            paths.push(path.1);
-        }
-
-    }
-
-    for row in map.iter().rev() {
-        let mut string = String::new();
-        for ele in row.iter() {
-            if ele.has_been_used {
-                string.push('U');
-            } else {
-                string.push('.');
-            }
-        }
-        println!("{string}");
-    }
-
-    final_paths
-}
-
-fn calculate_dist_for_two_points(
-    y1: u32,
-    y2: u32,
-    x1: u32,
-    x2: u32,
-) -> u32 {
-    ((y2 as i32 - y1 as i32).pow(2) + (x2 as i32 - x1 as i32).pow(2)) as u32
-}
