@@ -8,7 +8,7 @@ struct Point {
     y: u32,
 }
 
-const DIVISOR: u32 = 200;
+const DIVISOR: u32 = 50;
 
 #[derive(Debug, Clone)]
 struct PathInfo {
@@ -113,34 +113,34 @@ fn main() {
     //#4
     // 0,1000 300,1500 350,1400 500,2000 800,1800 1000,2500 1200,2100 1500,2400 2000,1000 2200,500 2500,100 2900,800 3000,500 3200,1000 3500,2000 3800,800 4000,200 5000,200 5500,1500 6999,2800
     // 500 2700
-    // let ground_points = [
-    //     Point { x:0, y:1000 },
-    //     Point { x:300, y:1500 },
-    //     Point { x:350, y:1400 },
-    //     Point { x:500, y:2000 },
-    //     Point { x:800, y:1800 },
-    //     Point { x:1000,y:2500 },
-    //     Point { x:1200,y:2100 },
-    //     Point { x:1500,y:2400 },
-    //     Point { x:2000,y:1000 },
-    //     Point { x:2200,y:500 },
-    //     Point { x:2500,y:100 },
-    //     Point { x:2900,y:800 },
-    //     Point { x:3000,y:500 },
-    //     Point { x:3200,y:1000 },
-    //     Point { x:3500,y:2000 },
-    //     Point { x:3800,y:800 },
-    //     Point { x:4000,y:200 },
-    //     Point { x:5000,y:200 },
-    //     Point { x:5500,y:1500 },
-    //     Point { x:6999,y:2800 },
-    // ];
-    // let shuttle_point = Point {
-    //     x: 500,
-    //     y: 2700,
-    // };
-    // let first_flat_index = 16;
-    // let second_flat_index = 17;
+    let ground_points = [
+        Point { x:0, y:1000 },
+        Point { x:300, y:1500 },
+        Point { x:350, y:1400 },
+        Point { x:500, y:2000 },
+        Point { x:800, y:1800 },
+        Point { x:1000,y:2500 },
+        Point { x:1200,y:2100 },
+        Point { x:1500,y:2400 },
+        Point { x:2000,y:1000 },
+        Point { x:2200,y:500 },
+        Point { x:2500,y:100 },
+        Point { x:2900,y:800 },
+        Point { x:3000,y:500 },
+        Point { x:3200,y:1000 },
+        Point { x:3500,y:2000 },
+        Point { x:3800,y:800 },
+        Point { x:4000,y:200 },
+        Point { x:5000,y:200 },
+        Point { x:5500,y:1500 },
+        Point { x:6999,y:2800 },
+    ];
+    let shuttle_point = Point {
+        x: 500,
+        y: 2700,
+    };
+    let first_flat_index = 16;
+    let second_flat_index = 17;
 
     //#5
     // 0,1000 300,1500 350,1400 500,2100 1500,2100 2000,200 2500,500 2900,300 3000,200 3200,1000 3500,500 3800,800 4000,200 4200,800 4800,600 5000,1200 5500,900 6000,500 6500,300 6999,500
@@ -148,24 +148,31 @@ fn main() {
 
     //Dummy points
     // 0,1000 3000,2000 4000,300 6999,300
-    let ground_points = [
-        Point { x:0, y:1000 },
-        Point { x:3000, y:2000 },
-        Point { x:4000,y:300 },
-        Point { x:6999,y:300 },
-    ];
-    let shuttle_point = Point {
-        x: 2000,
-        y: 2500,
-    };
-    let first_flat_index = 2;
-    let second_flat_index = 3;
+    // let ground_points = [
+    //     Point { x: 0, y: 1000 },
+    //     Point { x: 3000, y: 2000 },
+    //     Point { x: 4000, y: 300 },
+    //     Point { x: 6999, y: 300 },
+    // ];
+    // let shuttle_point = Point {
+    //     x: 2000,
+    //     y: 2500,
+    // };
+    // let first_flat_index = 2;
+    // let second_flat_index = 3;
 
-    //TODO: Still need to choose the shortest distance line.
+    //TODO: Finishing up the line
+    // Maybe 'move' the ground out a little bit (or modify something to make it work)
+    // Find the lines that connect my 'path'
+    // Still need to choose the shortest distance line.
+
     //TODO: There are at least 2 things wrong with this
-    // 1) It isn't stopping with the current params.
-    //  --Last thing that was changed was that the shuttle points were not properly calculated (not subtracting by mod).
-    // 2) The lines are not catching the intersections
+    // 1) The diagonal lines are not catching the intersections
+    // 2) Still the problem that it isn't working on setting of 200
+    // 3) It is filling the entire map with 'used' even though it seems to be getting the correct
+    //  answer.
+    //  -Probably make sure below tDO is not relevant anywhere else (it could be causing this)
+    //  -Probably refactor function below a little, might be easier to work with
     let mut final_paths = calculate_line(
         &ground_points,
         first_flat_index,
@@ -194,6 +201,7 @@ fn main() {
 }
 
 //TODO: probably clean this up a TAD bit
+// calculating the equations for the ground points (m & b) before hand would be nice
 fn calculate_line(
     ground_points: &[Point],
     flat_surface_first_index: usize,
@@ -223,8 +231,18 @@ fn calculate_line(
         let b = start_point_y_f - m * start_point_x_f;
 
         let start_x = start_point.x / DIVISOR;
-        let end_x = end_point.x / DIVISOR;
 
+        //TODO: Because the end point can hit the VERY EDGE of the line, an extra entire
+        // square can be added.
+        // Is this the best way to handle it?
+        // Is this problem relevant anywhere else?
+        let end_x = if end_point.x % DIVISOR == 0 {
+            (end_point.x - 1) / DIVISOR
+        } else {
+            end_point.x / DIVISOR
+        };
+
+        println!("x range {start_x}..={end_x}");
         //The starting point here is a mirror of the end point of the last
         // loop. This has to be done in order to make sure both lines are added to crossing_lines
         // member.
@@ -243,12 +261,16 @@ fn calculate_line(
                     (m * (((x + 1) * DIVISOR) as f32) + b) as u32
                 };
 
+            println!("start_point {:?} end_point {:?}", start_point, end_point);
+            println!("m {m} b {b} x {x}");
             y_begin /= DIVISOR;
             y_end /= DIVISOR;
 
             let range = if y_begin <= y_end {
+                println!("y range {y_begin}..={y_end}");
                 (y_begin..=y_end).collect::<Vec<_>>()
             } else {
+                println!("y range {y_end}..={y_begin}");
                 (y_end..=y_begin).rev().collect::<Vec<_>>()
             };
 
@@ -285,8 +307,6 @@ fn calculate_line(
         }
         println!("{string}");
     }
-
-    println!("element has crossing: {}", map[2100/DIVISOR as usize][2600/DIVISOR as usize].crossing_lines_idx > 0);
 
     let mut paths = Vec::<PathInfo>::new();
 
@@ -336,7 +356,6 @@ fn calculate_line(
         );
     }
 
-
     let mut final_paths = Vec::<PathInfo>::new();
     /**
       could probably use diagonals, but there are some issues
@@ -366,14 +385,16 @@ fn calculate_line(
         for path in paths_copy {
             let final_x = path.path.last().expect("path empty").x;
             let final_y = path.path.last().expect("path empty").y;
-            println!("x {final_x} y {final_y}");
+            // println!("x {final_x} y {final_y}");
             if final_y >= DIVISOR { //down
-                println!("down");
+                // println!("down");
 
                 let next_y = final_y - DIVISOR;
                 let next_element = &mut map[(next_y / DIVISOR) as usize][(final_x / DIVISOR) as usize];
 
-                if !next_element.has_been_used || next_element.contains_landing_line {
+                if !next_element.has_been_used
+                    // || next_element.contains_landing_line
+                {
                     let mut path_ended = false;
                     for i in 0..next_element.crossing_lines_idx {
                         let point_pair = next_element.crossing_lines[i].expect("invalid crossing idx {i}");
@@ -389,21 +410,12 @@ fn calculate_line(
 
                         let y_intersection = (m * x_line + b) as u32;
 
-                        if final_x == 3000 && next_y == 2100 {
-                            println!("down y_intersection {y_intersection}");
-                        }
-
                         if (y_intersection / DIVISOR) == (next_y / DIVISOR) {
-
-                            if final_x == 3000 && next_y == 2100 {
-                                println!("down path_ended");
-                            }
 
                             path_ended = true;
 
                             if point_pair.start == ground_points[flat_surface_first_index]
                                 && point_pair.end == ground_points[flat_surface_second_index] {
-
                                 let mut path_clone = path.clone();
                                 let path_last_val = path_clone.path.last().expect("path empty");
 
@@ -428,7 +440,6 @@ fn calculate_line(
                         }
                     }
 
-                    println!("path_ended {path_ended}");
                     if !path_ended {
                         let mut path_clone = path.clone();
                         let path_last_val = path_clone.path.last().expect("path empty");
@@ -448,20 +459,23 @@ fn calculate_line(
                         let prev_value = temp_paths.get(&next_point);
 
                         if prev_value.is_none() || prev_value.unwrap().distance > path_clone.distance {
+                            // println!("storing x {final_x} y {next_y}");
                             path_clone.path.push(next_point);
                             temp_paths.insert(next_point, path_clone);
                         }
                     }
                 }
             }
-
+/*
             if final_x >= DIVISOR && final_y >= DIVISOR { //down-left
                 println!("down-left");
 
                 let next_x = final_x - DIVISOR;
                 let next_y = final_y - DIVISOR;
                 let next_element = &mut map[(next_y / DIVISOR) as usize][(next_x / DIVISOR) as usize];
-                if !next_element.has_been_used || next_element.contains_landing_line {
+                if !next_element.has_been_used
+                    // || next_element.contains_landing_line
+                {
                     let mut path_ended = false;
                     for i in 0..next_element.crossing_lines_idx {
                         let point_pair = next_element.crossing_lines[i].expect("invalid crossing idx {i}");
@@ -553,7 +567,9 @@ fn calculate_line(
                 let next_y = final_y - DIVISOR;
                 // println!("down-right {next_x},{next_y}");
                 let next_element = &mut map[(next_y / DIVISOR) as usize][(next_x / DIVISOR) as usize];
-                if !next_element.has_been_used || next_element.contains_landing_line {
+                if !next_element.has_been_used
+                    // || next_element.contains_landing_line
+                {
                     let mut path_ended = false;
                     for i in 0..next_element.crossing_lines_idx {
                         let point_pair = next_element.crossing_lines[i].expect("invalid crossing idx {i}");
@@ -644,13 +660,16 @@ fn calculate_line(
                     }
                 }
             }
+*/
 
             if final_x >= DIVISOR { //left
-                println!("left");
+                // println!("left");
 
                 let next_x = final_x - DIVISOR;
                 let next_element = &mut map[(final_y / DIVISOR) as usize][(next_x / DIVISOR) as usize];
-                if !next_element.has_been_used || next_element.contains_landing_line {
+                if !next_element.has_been_used
+                    // || next_element.contains_landing_line
+                {
                     let mut path_ended = false;
                     for i in 0..next_element.crossing_lines_idx {
                         let point_pair = next_element.crossing_lines[i].expect("invalid crossing idx {i}");
@@ -695,7 +714,6 @@ fn calculate_line(
                         }
                     }
 
-                    println!("path_ended {path_ended}");
                     if !path_ended {
                         let mut path_clone = path.clone();
                         let path_last_val = path_clone.path.last().expect("path empty");
@@ -715,6 +733,7 @@ fn calculate_line(
                         let prev_value = temp_paths.get(&next_point);
 
                         if prev_value.is_none() || prev_value.unwrap().distance > path_clone.distance {
+                            // println!("storing x {next_x} y {final_y}");
                             path_clone.path.push(next_point);
                             temp_paths.insert(next_point, path_clone);
                         }
@@ -723,10 +742,12 @@ fn calculate_line(
             }
 
             if final_x + DIVISOR <= 6999 { //right
-                println!("right");
+                // println!("right");
                 let next_x = final_x + DIVISOR;
                 let next_element = &mut map[(final_y / DIVISOR) as usize][(next_x / DIVISOR) as usize];
-                if !next_element.has_been_used || next_element.contains_landing_line {
+                if !next_element.has_been_used
+                    // || next_element.contains_landing_line
+                {
                     let mut path_ended = false;
                     for i in 0..next_element.crossing_lines_idx {
                         let point_pair = next_element.crossing_lines[i].expect("invalid crossing idx {i}");
@@ -771,7 +792,6 @@ fn calculate_line(
                         }
                     }
 
-                    println!("path_ended {path_ended}");
                     if !path_ended {
                         let mut path_clone = path.clone();
                         let path_last_val = path_clone.path.last().expect("path empty");
@@ -791,6 +811,7 @@ fn calculate_line(
                         let prev_value = temp_paths.get(&next_point);
 
                         if prev_value.is_none() || prev_value.unwrap().distance > path_clone.distance {
+                            // println!("storing x {next_x} y {final_y}");
                             path_clone.path.push(next_point);
                             temp_paths.insert(next_point, path_clone);
                         }
