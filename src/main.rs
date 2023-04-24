@@ -2,13 +2,46 @@
 
 use std::collections::HashMap;
 
+//The size of the squares the the map is divided into when finding the shortest path.
+const SIZE_OF_SQUARES: u32 = 50;
+
+//Amount of distance to take into consideration between shuttle and ground for shortest path.
+const AMOUNT_OF_LEEWAY: f64 = 100.0;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Point {
     x: u32,
     y: u32,
 }
 
-const DIVISOR: u32 = 50;
+//TODO: delete me
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct Pointz {
+    x: i32,
+    y: i32,
+}
+
+impl Pointz {
+    fn new(&point: &Point) -> Pointz {
+        Pointz {
+            x: point.x as i32,
+            y: point.y as i32,
+        }
+    }
+}
+
+//TODO: delete me
+#[derive(Debug, Copy, Clone)]
+struct PointPairz {
+    start: Pointz,
+    end: Pointz,
+}
+
+#[derive(Debug, Copy, Clone)]
+struct LineEquation {
+    m: f64,
+    b: f64,
+}
 
 #[derive(Debug, Clone)]
 struct PathInfo {
@@ -22,9 +55,6 @@ struct PointPair {
     end: Point,
 }
 
-//TODO: may want to add the starting and stopping points
-// more than one could exist tho
-// they could change directions while inside the node
 #[derive(Debug, Copy, Clone)]
 struct MapNode {
     crossing_lines: [Option<PointPair>; 5],
@@ -45,55 +75,18 @@ impl MapNode {
 }
 
 fn main() {
-    //TODO:
-    // need to get all the x and y coordinates
-    // need to find the flat ground
-    // need to find the highest y in my way
-    // need to make sure I get over it
-    // need to find the next highest when I get over it
-
-    //TODO:
-    // Not 100% sure how I want to set this up yet.
-    // How do I get over the peaks and stuff, I know I have to calculate several moves in advance. I
-    //  also know(?) that I can get the entire solution on the first move.
-    // Can I calculate it backwards like a pathfinding thing? This type of breadth first search probably
-    //  won't work just like the racing one didn't work.
-
-    //TODO:
-    // From an intuitive pov I can draw a line between the craft and the nearest 'safe' spot, then
-    //  modify it to fit.
-    // So draw the line (figure out the specific safe point last).
-    //  1) Need to move the end point left or right.
-    //  2) Need to take the straight line and curve it.
-    //   -So a curve might be able to be laid overtop of it. But in reality it is a lot of lines.
-    //   -Curve will only need to move up. Never down. For advanced cases, may need to move around a little more.
-    //  3) This has a 3rd dimension which is velocity.
-
-
-    //TODO:
-    // Maybe I make the best case line, then follow it backwards using some kind of pathfinding?.
-    //  -It seems that final velocity is still unknown, so maybe I can just use <40 instead?
-    // Maybe do a depth first search following the line?
-
-    //TODO:
-    // 1) Draw the best possible line from the flat ground to the ship.
-    //  -In the cave one the side of the flat ground that is `closest` is the opposite side.
-    //  -Maybe if the line passes 90 degrees. move the `closest` to the other side.
-    // 2) Do a depth first search on it while first moving towards the line, then moving away from it.
-    //  -Need to have both thrust and rotation as parameters here, probably want some restrictions to make
-    //   choosing easier.
 
     //#1
     // 0,100 1000,500 1500,1500 3000,1000 4000,150 5500,150 6999,800
     // 2500,2700
     // let ground_points = [
-    //     Point { x: 0, y: 100 },
-    //     Point { x: 1000, y: 500 },
-    //     Point { x: 1500, y: 1500 },
-    //     Point { x: 3000, y: 1000 },
-    //     Point { x: 4000, y: 150 },
-    //     Point { x: 5500, y: 150 },
-    //     Point { x: 6999, y: 800 },
+    //     Some(Point { x: 0, y: 100 }),
+    //     Some(Point { x: 1000, y: 500 }),
+    //     Some(Point { x: 1500, y: 1500 }),
+    //     Some(Point { x: 3000, y: 1000 }),
+    //     Some(Point { x: 4000, y: 150 }),
+    //     Some(Point { x: 5500, y: 150 }),
+    //     Some(Point { x: 6999, y: 800 }),
     // ];
     // let shuttle_point = Point {
     //     x: 2500,
@@ -101,6 +94,7 @@ fn main() {
     // };
     // let first_flat_index = 4;
     // let second_flat_index = 5;
+    // let ground_points_size = 7;
 
     //#2
     // 0,100 1000,500 1500,100 3000,100 3500,500 3700,200 5000,1500 5800,300 6000,1000 6999,2000
@@ -114,26 +108,26 @@ fn main() {
     // 0,1000 300,1500 350,1400 500,2000 800,1800 1000,2500 1200,2100 1500,2400 2000,1000 2200,500 2500,100 2900,800 3000,500 3200,1000 3500,2000 3800,800 4000,200 5000,200 5500,1500 6999,2800
     // 500 2700
     // let ground_points = [
-    //     Point { x: 0, y: 1000 },
-    //     Point { x: 300, y: 1500 },
-    //     Point { x: 350, y: 1400 },
-    //     Point { x: 500, y: 2000 },
-    //     Point { x: 800, y: 1800 },
-    //     Point { x: 1000, y: 2500 },
-    //     Point { x: 1200, y: 2100 },
-    //     Point { x: 1500, y: 2400 },
-    //     Point { x: 2000, y: 1000 },
-    //     Point { x: 2200, y: 500 },
-    //     Point { x: 2500, y: 100 },
-    //     Point { x: 2900, y: 800 },
-    //     Point { x: 3000, y: 500 },
-    //     Point { x: 3200, y: 1000 },
-    //     Point { x: 3500, y: 2000 },
-    //     Point { x: 3800, y: 800 },
-    //     Point { x: 4000, y: 200 },
-    //     Point { x: 5000, y: 200 },
-    //     Point { x: 5500, y: 1500 },
-    //     Point { x: 6999, y: 2800 },
+    //     Some(Point { x: 0, y: 1000 }),
+    //     Some(Point { x: 300, y: 1500 }),
+    //     Some(Point { x: 350, y: 1400 }),
+    //     Some(Point { x: 500, y: 2000 }),
+    //     Some(Point { x: 800, y: 1800 }),
+    //     Some(Point { x: 1000, y: 2500 }),
+    //     Some(Point { x: 1200, y: 2100 }),
+    //     Some(Point { x: 1500, y: 2400 }),
+    //     Some(Point { x: 2000, y: 1000 }),
+    //     Some(Point { x: 2200, y: 500 }),
+    //     Some(Point { x: 2500, y: 100 }),
+    //     Some(Point { x: 2900, y: 800 }),
+    //     Some(Point { x: 3000, y: 500 }),
+    //     Some(Point { x: 3200, y: 1000 }),
+    //     Some(Point { x: 3500, y: 2000 }),
+    //     Some(Point { x: 3800, y: 800 }),
+    //     Some(Point { x: 4000, y: 200 }),
+    //     Some(Point { x: 5000, y: 200 }),
+    //     Some(Point { x: 5500, y: 1500 }),
+    //     Some(Point { x: 6999, y: 2800 }),
     // ];
     // let shuttle_point = Point {
     //     x: 500,
@@ -141,6 +135,7 @@ fn main() {
     // };
     // let first_flat_index = 16;
     // let second_flat_index = 17;
+    // let ground_points_size = 20;
 
     //#5
     // 0,1000 300,1500 350,1400 500,2100 1500,2100 2000,200 2500,500 2900,300 3000,200 3200,1000 3500,500 3800,800 4000,200 4200,800 4800,600 5000,1200 5500,900 6000,500 6500,300 6999,500
@@ -150,28 +145,28 @@ fn main() {
     // 0,450 300,750 1000,450 1500,650 1800,850 2000,1950 2200,1850 2400,2000 3100,1800 3150,1550 2500,1600 2200,1550 2100,750 2200,150 3200,150 3500,450 4000,950 4500,1450 5000,1550 5500,1500 6000,950 6999,1750
     // 6500 2600
     // let ground_points = [
-    //     Point { x: 0, y: 450 },
-    //     Point { x: 300, y: 750 },
-    //     Point { x: 1000, y: 450 },
-    //     Point { x: 1500, y: 650 },
-    //     Point { x: 1800, y: 850 },
-    //     Point { x: 2000, y: 1950 },
-    //     Point { x: 2200, y: 1850 },
-    //     Point { x: 2400, y: 2000 },
-    //     Point { x: 3100, y: 1800 },
-    //     Point { x: 3150, y: 1550 },
-    //     Point { x: 2500, y: 1600 },
-    //     Point { x: 2200, y: 1550 },
-    //     Point { x: 2100, y: 750 },
-    //     Point { x: 2200, y: 150 },
-    //     Point { x: 3200, y: 150 },
-    //     Point { x: 3500, y: 450 },
-    //     Point { x: 4000, y: 950 },
-    //     Point { x: 4500, y: 1450 },
-    //     Point { x: 5000, y: 1550 },
-    //     Point { x: 5500, y: 1500 },
-    //     Point { x: 6000, y: 950 },
-    //     Point { x: 6999, y: 1750 },
+    //     Some(Point { x: 0, y: 450 }),
+    //     Some(Point { x: 300, y: 750 }),
+    //     Some(Point { x: 1000, y: 450 }),
+    //     Some(Point { x: 1500, y: 650 }),
+    //     Some(Point { x: 1800, y: 850 }),
+    //     Some(Point { x: 2000, y: 1950 }),
+    //     Some(Point { x: 2200, y: 1850 }),
+    //     Some(Point { x: 2400, y: 2000 }),
+    //     Some(Point { x: 3100, y: 1800 }),
+    //     Some(Point { x: 3150, y: 1550 }),
+    //     Some(Point { x: 2500, y: 1600 }),
+    //     Some(Point { x: 2200, y: 1550 }),
+    //     Some(Point { x: 2100, y: 750 }),
+    //     Some(Point { x: 2200, y: 150 }),
+    //     Some(Point { x: 3200, y: 150 }),
+    //     Some(Point { x: 3500, y: 450 }),
+    //     Some(Point { x: 4000, y: 950 }),
+    //     Some(Point { x: 4500, y: 1450 }),
+    //     Some(Point { x: 5000, y: 1550 }),
+    //     Some(Point { x: 5500, y: 1500 }),
+    //     Some(Point { x: 6000, y: 950 }),
+    //     Some(Point { x: 6999, y: 1750 }),
     // ];
     // let shuttle_point = Point {
     //     x: 6500,
@@ -179,29 +174,30 @@ fn main() {
     // };
     // let first_flat_index = 13;
     // let second_flat_index = 14;
+    // let ground_points_size = 22;
 
     //#2 Episode 3
     // 0,1800 300,1200 1000,1550 2000,1200 2500,1650 3700,220 4700,220 4750,1000 4700,1650 4000,1700 3700,1600 3750,1900 4000,2100 4900,2050 5100,1000 5500,500 6200,800 6999,600
     // 6500 2000
     let ground_points = [
-        Point { x:0,   y:1800 },
-        Point { x:300, y:1200 },
-        Point { x:1000,y:1550 },
-        Point { x:2000,y:1200 },
-        Point { x:2500,y:1650 },
-        Point { x:3700,y:220 },
-        Point { x:4700,y:220 },
-        Point { x:4750,y:1000 },
-        Point { x:4700,y:1650 },
-        Point { x:4000,y:1700 },
-        Point { x:3700,y:1600 },
-        Point { x:3750,y:1900 },
-        Point { x:4000,y:2100 },
-        Point { x:4900,y:2050 },
-        Point { x:5100,y:1000 },
-        Point { x:5500,y:500 },
-        Point { x:6200,y:800 },
-        Point { x:6999,y:600 },
+        Some(Point { x: 0, y: 1800 }),
+        Some(Point { x: 300, y: 1200 }),
+        Some(Point { x: 1000, y: 1550 }),
+        Some(Point { x: 2000, y: 1200 }),
+        Some(Point { x: 2500, y: 1650 }),
+        Some(Point { x: 3700, y: 220 }),
+        Some(Point { x: 4700, y: 220 }),
+        Some(Point { x: 4750, y: 1000 }),
+        Some(Point { x: 4700, y: 1650 }),
+        Some(Point { x: 4000, y: 1700 }),
+        Some(Point { x: 3700, y: 1600 }),
+        Some(Point { x: 3750, y: 1900 }),
+        Some(Point { x: 4000, y: 2100 }),
+        Some(Point { x: 4900, y: 2050 }),
+        Some(Point { x: 5100, y: 1000 }),
+        Some(Point { x: 5500, y: 500 }),
+        Some(Point { x: 6200, y: 800 }),
+        Some(Point { x: 6999, y: 600 }),
     ];
     let shuttle_point = Point {
         x: 6500,
@@ -209,14 +205,16 @@ fn main() {
     };
     let first_flat_index = 5;
     let second_flat_index = 6;
+    let ground_points_size = 18;
 
     //Dummy points
     // 0,1000 3000,2000 4000,300 6999,300
-    // let ground_points = [
-    //     Point { x: 0, y: 1000 },
-    //     Point { x: 3000, y: 2000 },
-    //     Point { x: 4000, y: 300 },
-    //     Point { x: 6999, y: 300 },
+    // 2000 2500
+    //  let ground_points = [
+    //     Some(Point { x: 0, y: 1000 }),
+    //     Some(Point { x: 3000, y: 2000 }),
+    //     Some(Point { x: 4000, y: 300 }),
+    //     Some(Point { x: 6999, y: 300 }),
     // ];
     // let shuttle_point = Point {
     //     x: 2000,
@@ -224,29 +222,49 @@ fn main() {
     // };
     // let first_flat_index = 2;
     // let second_flat_index = 3;
+    // let ground_points_size = 4;
 
-    //TODO: Finishing up the line
-    // Choose the shortest distance line.
-    // Find the lines that connect my 'path'
-    // Maybe 'move' the ground out a little bit (or modify something to make it work)
-    // -Don't move landing area
-    // -Make sure that the lines don't go out of bounds
+    //TODO:
+    // 1) Draw the best possible line from the flat ground to the ship.
+    //  -In the cave one the side of the flat ground that is `closest` is the opposite side.
+    //  -Maybe if the line passes 90 degrees. move the `closest` to the other side.
+    // 2) Do a depth first search on it while first moving towards the line, then moving away from it.
+    //  -Need to have both thrust and rotation as parameters here, probably want some restrictions to make
+    //   choosing easier.
 
-    //TODO: There are things wrong with this
-    // 1) 250 on #4 doesn't set most of the map, is this ok?
-    //  -The ship might start so low it can't get over the mountain.
-    // 2) Still something wrong with it, not drawing the mountain on Episode 3 #1.
-    // 3) The shuttle seems to start too low in episode 3, so it needs to go up I guess.
-    //  -I think up will have the same problems that right did.
-    //  -If I am going to use up, I probably want to
-    let mut final_paths = calculate_line(
+    //TODO: Want to iterate backwards through it and check if any of them intercept with leeway ground_points, make
+    // the final lines as straight as possible. Less lines is less intercepts to check for although it doesn't matter
+    // that much I don't think.
+    //TODO: Clean up my structs above, don't need 2 types of 'Point' structs (or do I?) certainly don't need
+    // PointPairz.
+    //TODO: Clean up the functions I made so I can read them later.
+    //TODO: Clean up the TODO stuff.
+    let leeway_return_values = give_leeway_for_ground(
         &ground_points,
+        ground_points_size,
         first_flat_index,
         second_flat_index,
+    );
+
+    //TODO: need to make sure that the index variables have not changed (maybe return them from above)
+    println!("adjusted_ground_points");
+    for i in 0..leeway_return_values.adjusted_ground_points_size {
+        print!("{},{} ", leeway_return_values.adjusted_ground_points[i].unwrap().x, leeway_return_values.adjusted_ground_points[i].unwrap().y);
+    }
+    println!();
+
+    let mut final_paths = calculate_line(
+        &leeway_return_values.adjusted_ground_points,
+        leeway_return_values.adjusted_ground_points_size,
+        leeway_return_values.flat_surface_first_index,
+        leeway_return_values.flat_surface_second_index,
         &shuttle_point,
     );
 
     final_paths.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
+
+    //TODO: Finishing up the line
+    // Choose the shortest distance line.
 
     for path_info in final_paths.iter() {
         let mut s = String::new();
@@ -266,72 +284,241 @@ fn main() {
     // println!("finalPaths: {:?}", final_paths);
 }
 
+//TODO: move this out of the way
+fn get_equation_of_line(
+    start: &Pointz,
+    end: &Pointz,
+) -> LineEquation {
+    let start_point_x_f = start.x as f64;
+    let start_point_y_f = start.y as f64;
+    let end_point_x_f = end.x as f64;
+    let end_point_y_f = end.y as f64;
+
+    let m = (end_point_y_f - start_point_y_f) / (end_point_x_f - start_point_x_f);
+    let b = start_point_y_f - m * start_point_x_f;
+
+    LineEquation { m, b }
+}
+
+struct LeewayReturnValues {
+    flat_surface_first_index: usize,
+    flat_surface_second_index: usize,
+    adjusted_ground_points: [Option<Point>; 30],
+    adjusted_ground_points_size: usize,
+}
+
+fn give_leeway_for_ground(
+    ground_points: &[Option<Point>],
+    ground_points_size: usize,
+    flat_surface_first_index: usize,
+    flat_surface_second_index: usize,
+) -> LeewayReturnValues {
+    let mut adjusted_ground_points: [Option<Point>; 30] = [None; 30];
+    let mut current_index = 0;
+    let mut new_first_flat_surface_index = flat_surface_first_index;
+    let mut new_second_flat_surface_index = flat_surface_second_index;
+
+    let mut previous_line = LineEquation {
+        m: 0.0,
+        b: 0.0,
+    };
+    for i in 1..ground_points_size {
+        let start_point = &ground_points[i - 1].unwrap();
+        let end_point = &ground_points[i].unwrap();
+
+        //y1 = m * x1 + b
+        //y2 = m * x2 + b
+        //m = (y2-y1)/(x2-x1)
+        //b = y1-m*x1
+        let original_line_equation = get_equation_of_line(
+            &Pointz::new(start_point),
+            &Pointz::new(end_point),
+        );
+
+        let perpendicular_m = -1.0 / original_line_equation.m;
+
+        // next_m = Dy/Dx;
+        // d = sqrt((Dy)^2 + (Dx)^2);
+        // d = sqrt(Dx^2 + Dx^2 * next_m^2)
+        // d = sqrt(Dx^2 * (1 + next_m^2))
+        // d^2/(1 + next_m^2) = Dx^2
+        // +/- sqrt(d^2/(1 + next_m^2)) = Dx
+        // +/- d/sqrt((1 + next_m^2)) = Dx
+
+        let (delta_x, delta_y) =
+            if i - 1 == flat_surface_first_index
+                && i == flat_surface_second_index {
+                new_first_flat_surface_index = i - 1;
+                new_second_flat_surface_index = i;
+                (0.0, 0.0)
+            } else {
+                let delta_x = AMOUNT_OF_LEEWAY / (perpendicular_m * perpendicular_m + 1.0).sqrt();
+                let delta_y = perpendicular_m * delta_x;
+                (delta_x, delta_y)
+            };
+
+        let mut multiplier =
+            if original_line_equation.m > 0.0 {
+                -1.0
+            } else {
+                1.0
+            };
+
+        if start_point.x > end_point.x {
+            multiplier *= -1.0;
+        }
+
+        let start_x = start_point.x as f64 + (multiplier * delta_x);
+        let start_y = start_point.y as f64 + (multiplier * delta_y);
+        let end_x = end_point.x as f64 + (multiplier * delta_x);
+        let end_y = end_point.y as f64 + (multiplier * delta_y);
+
+        //Original line slope has not changed.
+        let new_b = start_y - original_line_equation.m * start_x;
+
+        if i == 1 { //at start
+            adjusted_ground_points[current_index] = Some(
+                Point {
+                    x: 0,
+                    y: new_b as u32,
+                }
+            );
+            current_index += 1;
+        } else {
+            let new_line_equation = get_equation_of_line(
+                &Pointz {
+                    x: start_x as i32,
+                    y: start_y as i32,
+                },
+                &Pointz {
+                    x: end_x as i32,
+                    y: end_y as i32,
+                },
+            );
+
+            //The next point can just use the previous point, if the slopes are equal there will
+            // be no difference.
+            if previous_line.m == new_line_equation.m {
+                continue;
+            }
+
+            let x_interception = (new_line_equation.b - previous_line.b) / (previous_line.m - new_line_equation.m);
+            let y_interception = new_line_equation.m * x_interception + new_line_equation.b;
+
+            adjusted_ground_points[current_index] = Some(
+                Point {
+                    x: x_interception as u32,
+                    y: y_interception as u32,
+                }
+            );
+            current_index += 1;
+
+            previous_line = new_line_equation;
+
+            if i == ground_points_size - 1 { // last point
+                let final_y = new_line_equation.m * 6999.0 + new_line_equation.b;
+                adjusted_ground_points[current_index] = Some(
+                    Point {
+                        x: 6999,
+                        y: final_y as u32,
+                    }
+                );
+                current_index += 1;
+            }
+        }
+
+        previous_line = LineEquation {
+            m: original_line_equation.m,
+            b: new_b,
+        };
+    }
+
+    LeewayReturnValues {
+        flat_surface_first_index: new_first_flat_surface_index,
+        flat_surface_second_index: new_second_flat_surface_index,
+        adjusted_ground_points,
+        adjusted_ground_points_size: current_index,
+    }
+}
+
 //TODO: probably clean this up a TAD bit
 // calculating the equations for the ground points (m & b) before hand would be nice
+// extracting out all the times I calculate distance would be nice (f64 must be used to avoid float->int conversion errors)
 fn calculate_line(
-    ground_points: &[Point],
+    ground_points: &[Option<Point>],
+    ground_points_size: usize,
     flat_surface_first_index: usize,
     flat_surface_second_index: usize,
     shuttle_point: &Point,
 ) -> Vec<PathInfo> {
     //Breadth first search, then find the shortest path
 
-    let mut map = [[MapNode::new(); (7000 / DIVISOR) as usize]; (3000 / DIVISOR) as usize];
+    let mut map = [[MapNode::new(); (7000 / SIZE_OF_SQUARES) as usize]; (3000 / SIZE_OF_SQUARES) as usize];
 
     //Iterate through all lines and save them to their respective map nodes.
-    for i in 1..ground_points.len() {
-        let start_point = &ground_points[i - 1];
-        let end_point = &ground_points[i];
+    for i in 1..ground_points_size {
+        let curr_ele = &ground_points[i].unwrap();
+        let prev_ele = &ground_points[i - 1].unwrap();
+        //If the point with the smaller x does NOT come first, there will be a problem with inclusion.
+        // This happens because if a point starts on the very starting point of a square, the initial point
+        // will not be included in the calculation.
+        let (start_point, end_point) =
+            if prev_ele.x <= curr_ele.x {
+                (prev_ele, curr_ele)
+            } else {
+                (curr_ele, prev_ele)
+            };
 
         //y1 = m * x1 + b
         //y2 = m * x2 + b
         //m = (y2-y1)/(x2-x1)
         //b = y1-m*x1
 
-        let start_point_x_f = start_point.x as f32;
-        let start_point_y_f = start_point.y as f32;
-        let end_point_x_f = end_point.x as f32;
-        let end_point_y_f = end_point.y as f32;
+        let start_point_x_f = start_point.x as f64;
+        let start_point_y_f = start_point.y as f64;
+        let end_point_x_f = end_point.x as f64;
+        let end_point_y_f = end_point.y as f64;
 
         let m = (end_point_y_f - start_point_y_f) / (end_point_x_f - start_point_x_f);
         let b = start_point_y_f - m * start_point_x_f;
 
-        let start_x = start_point.x / DIVISOR;
-        let end_x = end_point.x / DIVISOR;
+        let start_x = start_point.x / SIZE_OF_SQUARES;
+        let end_x = end_point.x / SIZE_OF_SQUARES;
 
-        println!("x range {start_x}..={end_x}");
         //The starting point here is a mirror of the end point of the last
         // loop. This has to be done in order to make sure both lines are added to crossing_lines
         // member.
         for x in start_x..=end_x {
             let mut y_begin =
-                if x == (start_point.x / DIVISOR) {
+                if x == start_x {
                     start_point.y
                 } else {
-                    (m * ((x * DIVISOR) as f32) + b) as u32
+                    (m * ((x * SIZE_OF_SQUARES) as f64) + b) as u32
                 };
 
             let mut y_end =
-                if x == (end_point.x / DIVISOR) {
+                if x == end_x {
                     end_point.y
                 } else {
-                    (m * (((x + 1) * DIVISOR) as f32) + b) as u32
+                    (m * (((x + 1) as u32 * SIZE_OF_SQUARES) as f64) + b) as u32
                 };
 
             println!("start_point {:?} end_point {:?}", start_point, end_point);
             println!("m {m} b {b} x {x}");
-            y_begin /= DIVISOR;
-            y_end /= DIVISOR;
+            println!("y_begin {y_begin} y_end {y_end}");
+            y_begin /= SIZE_OF_SQUARES;
+            y_end /= SIZE_OF_SQUARES;
 
-            let range = if y_begin <= y_end {
-                println!("y range {y_begin}..={y_end}");
+            let y_range = if y_begin <= y_end {
+                println!("y range increasing {y_begin}..={y_end}");
                 (y_begin..=y_end).collect::<Vec<_>>()
             } else {
-                println!("y range {y_end}..={y_begin}");
+                println!("y range decreasing {y_end}..={y_begin}");
                 (y_end..=y_begin).rev().collect::<Vec<_>>()
             };
 
-            for y in range {
+            for y in y_range {
+                println!("x {x} y {y}");
                 let mut map_ele = &mut map[y as usize][x as usize];
 
                 map_ele.crossing_lines[map_ele.crossing_lines_idx] =
@@ -366,13 +553,15 @@ fn calculate_line(
     }
     println!();
 
+    // println!("node (10,6) {:?}", map[12][13]);
+
     let mut paths = Vec::<PathInfo>::new();
 
     /** For now assuming first points cannot have any lines to intersect with. **/
 
     let normalized_shuttle_point = Point {
-        x: shuttle_point.x - shuttle_point.x % DIVISOR,
-        y: shuttle_point.y - shuttle_point.y % DIVISOR,
+        x: shuttle_point.x - shuttle_point.x % SIZE_OF_SQUARES,
+        y: shuttle_point.y - shuttle_point.y % SIZE_OF_SQUARES,
     };
 
     let first_distance = calculate_dist_for_two_points(
@@ -382,7 +571,7 @@ fn calculate_line(
         shuttle_point.x,
     );
 
-    map[(normalized_shuttle_point.y / DIVISOR) as usize][(normalized_shuttle_point.x / DIVISOR) as usize].has_been_used = true;
+    map[(normalized_shuttle_point.y / SIZE_OF_SQUARES) as usize][(normalized_shuttle_point.x / SIZE_OF_SQUARES) as usize].has_been_used = true;
 
     paths.push(
         PathInfo {
@@ -391,9 +580,9 @@ fn calculate_line(
         },
     );
 
-    if shuttle_point.x + DIVISOR <= 6999 {
+    if shuttle_point.x + SIZE_OF_SQUARES <= 6999 {
         let second_point = Point {
-            x: normalized_shuttle_point.x + DIVISOR,
+            x: normalized_shuttle_point.x + SIZE_OF_SQUARES,
             y: normalized_shuttle_point.y,
         };
 
@@ -404,7 +593,7 @@ fn calculate_line(
             shuttle_point.x,
         );
 
-        map[(second_point.y / DIVISOR) as usize][(second_point.x / DIVISOR) as usize].has_been_used = true;
+        map[(second_point.y / SIZE_OF_SQUARES) as usize][(second_point.x / SIZE_OF_SQUARES) as usize].has_been_used = true;
 
         paths.push(
             PathInfo {
@@ -432,10 +621,10 @@ fn calculate_line(
             let final_x = path.path.last().expect("path empty").x;
             let final_y = path.path.last().expect("path empty").y;
             // println!("x {final_x} y {final_y}");
-            if final_y >= DIVISOR { //down
+            if final_y >= SIZE_OF_SQUARES { //down
                 // println!("down");
-                let next_y = final_y - DIVISOR;
-                let mut next_element = &mut map[(next_y / DIVISOR) as usize][(final_x / DIVISOR) as usize];
+                let next_y = final_y - SIZE_OF_SQUARES;
+                let mut next_element = &mut map[(next_y / SIZE_OF_SQUARES) as usize][(final_x / SIZE_OF_SQUARES) as usize];
                 if !next_element.has_been_used {
                     check_if_path_valid(
                         ground_points,
@@ -452,10 +641,10 @@ fn calculate_line(
                 }
             }
 
-            if final_x >= DIVISOR { //left
+            if final_x >= SIZE_OF_SQUARES { //left
                 // println!("left");
-                let next_x = final_x - DIVISOR;
-                let mut next_element = &mut map[(final_y / DIVISOR) as usize][(next_x / DIVISOR) as usize];
+                let next_x = final_x - SIZE_OF_SQUARES;
+                let mut next_element = &mut map[(final_y / SIZE_OF_SQUARES) as usize][(next_x / SIZE_OF_SQUARES) as usize];
                 if !next_element.has_been_used {
                     check_if_path_valid(
                         ground_points,
@@ -472,15 +661,13 @@ fn calculate_line(
                 }
             }
 
-            if final_x + DIVISOR <= 6999 { //right
+            if final_x + SIZE_OF_SQUARES <= 6999 { //right
                 // println!("right");
-                let next_x = final_x + DIVISOR;
-                let next_element = map[(final_y / DIVISOR) as usize][(next_x / DIVISOR) as usize];
+                let next_x = final_x + SIZE_OF_SQUARES;
+                let next_element = map[(final_y / SIZE_OF_SQUARES) as usize][(next_x / SIZE_OF_SQUARES) as usize];
                 if !next_element.has_been_used {
 
-                    //TODO: the problem is at 400 1600 it can move right b/c the right final point isn't inclusive
-                    // 1) Move the square conceptually?
-                    // 2) Do a separate check for it.
+                    //TODO: Would like a cleaner solution here.
                     //Checking right is a bit special because.
                     // 1) It needs to check the CURRENT block not the next block (handled inside check_if_path_valid).
                     // 2) It needs to also check the single point in the next block because it will be moving there.
@@ -488,22 +675,22 @@ fn calculate_line(
                     for i in 0..next_element.crossing_lines_idx {
                         let point_pair = next_element.crossing_lines[i].unwrap();
 
-                        let start_point_x_f = point_pair.start.x as f32;
-                        let start_point_y_f = point_pair.start.y as f32;
-                        let end_point_x_f = point_pair.end.x as f32;
-                        let end_point_y_f = point_pair.end.y as f32;
+                        let start_point_x_f = point_pair.start.x as f64;
+                        let start_point_y_f = point_pair.start.y as f64;
+                        let end_point_x_f = point_pair.end.x as f64;
+                        let end_point_y_f = point_pair.end.y as f64;
 
                         let m = (end_point_y_f - start_point_y_f) / (end_point_x_f - start_point_x_f);
                         let b = start_point_y_f - m * start_point_x_f;
 
-                        if (m * (next_x as f32) + b) as u32 == final_y {
+                        if (m * (next_x as f64) + b) as u32 == final_y {
                             run_func = false;
                             break;
                         }
                     }
 
                     if run_func {
-                        let mut next_element = &mut map[(final_y / DIVISOR) as usize][(final_x / DIVISOR) as usize];
+                        let mut next_element = &mut map[(final_y / SIZE_OF_SQUARES) as usize][(final_x / SIZE_OF_SQUARES) as usize];
 
                         check_if_path_valid(
                             ground_points,
@@ -520,10 +707,57 @@ fn calculate_line(
                     }
                 }
             }
+
+            if final_y + SIZE_OF_SQUARES <= 2999 { //up
+                // println!("up");
+                let next_y = final_y + SIZE_OF_SQUARES;
+                //TODO: need to check the next spot in up to make sure its clear
+                let next_element = &map[(next_y / SIZE_OF_SQUARES) as usize][(final_x / SIZE_OF_SQUARES) as usize];
+
+                if !next_element.has_been_used {
+
+                    //Checking right is a bit special because.
+                    // 1) It needs to check the CURRENT block not the next block (handled inside check_if_path_valid).
+                    // 2) It needs to also check the single point in the next block because it will be moving there.
+                    let mut run_func = true;
+                    for i in 0..next_element.crossing_lines_idx {
+                        let point_pair = next_element.crossing_lines[i].unwrap();
+
+                        let start_point_x_f = point_pair.start.x as f64;
+                        let start_point_y_f = point_pair.start.y as f64;
+                        let end_point_x_f = point_pair.end.x as f64;
+                        let end_point_y_f = point_pair.end.y as f64;
+
+                        let m = (end_point_y_f - start_point_y_f) / (end_point_x_f - start_point_x_f);
+                        let b = start_point_y_f - m * start_point_x_f;
+
+                        if (((next_y as f64) - b) / m) as u32 == final_x {
+                            run_func = false;
+                            break;
+                        }
+                    }
+
+                    if run_func {
+                        let mut next_element = &mut map[(final_y / SIZE_OF_SQUARES) as usize][(final_x / SIZE_OF_SQUARES) as usize];
+                        check_if_path_valid(
+                            ground_points,
+                            flat_surface_first_index,
+                            flat_surface_second_index,
+                            &mut next_element,
+                            &mut final_paths,
+                            &mut temp_paths,
+                            &path,
+                            final_x,
+                            next_y,
+                            MoveDirection::UP,
+                        );
+                    }
+                }
+            }
         }
 
         for path in temp_paths {
-            let next_element = &mut map[(path.0.y / DIVISOR) as usize][(path.0.x / DIVISOR) as usize];
+            let next_element = &mut map[(path.0.y / SIZE_OF_SQUARES) as usize][(path.0.x / SIZE_OF_SQUARES) as usize];
             next_element.has_been_used = true;
             paths.push(path.1);
         }
@@ -549,10 +783,11 @@ enum MoveDirection {
     LEFT,
     RIGHT,
     DOWN,
+    UP,
 }
 
 fn check_if_path_valid(
-    ground_points: &[Point],
+    ground_points: &[Option<Point>],
     flat_surface_first_index: usize,
     flat_surface_second_index: usize,
     next_element: &mut MapNode,
@@ -563,45 +798,52 @@ fn check_if_path_valid(
     passed_y: u32,
     move_direction: MoveDirection,
 ) {
-    let x_div = 2;
-    let y_div = 8;
-    if passed_x / DIVISOR == x_div && passed_y / DIVISOR == y_div {
+    let x_div = 13;
+    let y_div = 12;
+    if passed_x / SIZE_OF_SQUARES == x_div && passed_y / SIZE_OF_SQUARES == y_div {
         println!("move_direction {:?}", move_direction);
     }
     let mut path_ended = false;
     for i in 0..next_element.crossing_lines_idx {
         let point_pair = next_element.crossing_lines[i].expect("invalid crossing idx {i}");
 
-        let start_point_x_f = point_pair.start.x as f32;
-        let start_point_y_f = point_pair.start.y as f32;
-        let end_point_x_f = point_pair.end.x as f32;
-        let end_point_y_f = point_pair.end.y as f32;
+        let start_point_x_f = point_pair.start.x as f64;
+        let start_point_y_f = point_pair.start.y as f64;
+        let end_point_x_f = point_pair.end.x as f64;
+        let end_point_y_f = point_pair.end.y as f64;
 
         let m = (end_point_y_f - start_point_y_f) / (end_point_x_f - start_point_x_f);
         let b = start_point_y_f - m * start_point_x_f;
 
         let (comparator, intersection, x_val, y_val) =
-            if move_direction != MoveDirection::DOWN {
+            if move_direction == MoveDirection::LEFT
+                || move_direction == MoveDirection::RIGHT {
                 //TODO: this is pretty convoluted, having to subtract x from it, might want to add
                 // a passed value for x comparator or something a bit more sensible
-                //TODO: still need to check the single point at the end (need it inclusive)
-                let y_line = passed_y as f32;
+                let y_line = passed_y as f64;
                 let comparator =
                     if move_direction == MoveDirection::RIGHT {
-                        (passed_x / DIVISOR) - 1
+                        (passed_x / SIZE_OF_SQUARES) - 1
                     } else {
-                        passed_x / DIVISOR
+                        passed_x / SIZE_OF_SQUARES
                     };
                 let x_intersection = ((y_line - b) / m) as u32;
-                (comparator, x_intersection / DIVISOR, x_intersection, passed_y)
-            } else {
-                let x_line = passed_x as f32;
+                (comparator, x_intersection / SIZE_OF_SQUARES, x_intersection, passed_y)
+            } else { // UP || DOWN
+                let x_line = passed_x as f64;
+                let comparator =
+                    if move_direction == MoveDirection::UP {
+                        (passed_y / SIZE_OF_SQUARES) - 1
+                    } else {
+                        passed_y / SIZE_OF_SQUARES
+                    };
                 let y_intersection = (m * x_line + b) as u32;
-                (passed_y / DIVISOR, y_intersection / DIVISOR, passed_x, y_intersection)
+                (comparator, y_intersection / SIZE_OF_SQUARES, passed_x, y_intersection)
             };
 
         //4,10 -> 5,10 goes through a line
-        if passed_x / DIVISOR == x_div && passed_y / DIVISOR == y_div {
+        if passed_x / SIZE_OF_SQUARES == x_div && passed_y / SIZE_OF_SQUARES == y_div {
+            println!("m {m} b {b}");
             println!("passed_x {passed_x} passed_y {passed_y}");
             println!("comparator {comparator} intersection {intersection} move_direction {:?}", move_direction);
             println!("next_element {:?}", next_element.crossing_lines);
@@ -611,8 +853,8 @@ fn check_if_path_valid(
         if comparator == intersection {
             path_ended = true;
 
-            if point_pair.start == ground_points[flat_surface_first_index]
-                && point_pair.end == ground_points[flat_surface_second_index] {
+            if point_pair.start == ground_points[flat_surface_first_index].unwrap()
+                && point_pair.end == ground_points[flat_surface_second_index].unwrap() {
                 let mut path_clone = path.clone();
                 let path_last_val = path_clone.path.last().expect("path empty");
 
@@ -637,7 +879,7 @@ fn check_if_path_valid(
         }
     }
 
-    if passed_x / DIVISOR == x_div && passed_y / DIVISOR == y_div {
+    if passed_x / SIZE_OF_SQUARES == x_div && passed_y / SIZE_OF_SQUARES == y_div {
         println!("passed_x {passed_x} passed_y {passed_y} path_ended {path_ended} move_direction {:?}", move_direction);
     }
 
