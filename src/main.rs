@@ -99,22 +99,20 @@ fn main() {
     //#1
     // 0,100 1000,500 1500,1500 3000,1000 4000,150 5500,150 6999,800
     // 2500,2700
-    // let ground_points = [
-    //     Some(Point { x: 0, y: 100 }),
-    //     Some(Point { x: 1000, y: 500 }),
-    //     Some(Point { x: 1500, y: 1500 }),
-    //     Some(Point { x: 3000, y: 1000 }),
-    //     Some(Point { x: 4000, y: 150 }),
-    //     Some(Point { x: 5500, y: 150 }),
-    //     Some(Point { x: 6999, y: 800 }),
-    // ];
-    // let shuttle_point = Point {
-    //     x: 2500,
-    //     y: 2700,
-    // };
-    // let first_flat_index = 4;
-    // let second_flat_index = 5;
-    // let ground_points_size = 7;
+    let ground_points = [
+        Some(LineSegment::new(0, 100, 1000, 500)),
+        Some(LineSegment::new(1000, 500, 1500, 1500)),
+        Some(LineSegment::new( 1500, 1500, 3000, 1000)),
+        Some(LineSegment::new( 3000, 1000, 4000, 150)),
+        Some(LineSegment::new( 4000, 150, 5500, 150)),
+        Some(LineSegment::new( 5500, 150, 6999, 800)),
+    ];
+    let shuttle_point = Point {
+        x: 2500,
+        y: 2700,
+    };
+    let flat_line_index = 4;
+    let ground_points_size = 6;
 
     //#2
     // 0,100 1000,500 1500,100 3000,100 3500,500 3700,200 5000,1500 5800,300 6000,1000 6999,2000
@@ -128,34 +126,32 @@ fn main() {
     // 0,1000 300,1500 350,1400 500,2000 800,1800 1000,2500 1200,2100 1500,2400 2000,1000 2200,500 2500,100 2900,800 3000,500 3200,1000 3500,2000 3800,800 4000,200 5000,200 5500,1500 6999,2800
     // 500 2700
     // let ground_points = [
-    //     Some(Point { x: 0, y: 1000 }),
-    //     Some(Point { x: 300, y: 1500 }),
-    //     Some(Point { x: 350, y: 1400 }),
-    //     Some(Point { x: 500, y: 2000 }),
-    //     Some(Point { x: 800, y: 1800 }),
-    //     Some(Point { x: 1000, y: 2500 }),
-    //     Some(Point { x: 1200, y: 2100 }),
-    //     Some(Point { x: 1500, y: 2400 }),
-    //     Some(Point { x: 2000, y: 1000 }),
-    //     Some(Point { x: 2200, y: 500 }),
-    //     Some(Point { x: 2500, y: 100 }),
-    //     Some(Point { x: 2900, y: 800 }),
-    //     Some(Point { x: 3000, y: 500 }),
-    //     Some(Point { x: 3200, y: 1000 }),
-    //     Some(Point { x: 3500, y: 2000 }),
-    //     Some(Point { x: 3800, y: 800 }),
-    //     Some(Point { x: 4000, y: 200 }),
-    //     Some(Point { x: 5000, y: 200 }),
-    //     Some(Point { x: 5500, y: 1500 }),
-    //     Some(Point { x: 6999, y: 2800 }),
+    //     Some(LineSegment::new(0, 1000, 300, 1500)),
+    //     Some(LineSegment::new(300, 1500, 350, 1400)),
+    //     Some(LineSegment::new( 350, 1400, 500, 2000)),
+    //     Some(LineSegment::new( 500, 2000, 800, 1800)),
+    //     Some(LineSegment::new( 800, 1800, 1000, 2500)),
+    //     Some(LineSegment::new( 1000, 2500, 1200, 2100)),
+    //     Some(LineSegment::new( 1200, 2100, 1500, 2400)),
+    //     Some(LineSegment::new( 1500, 2400, 2000, 1000)),
+    //     Some(LineSegment::new( 2000, 1000, 2200, 500)),
+    //     Some(LineSegment::new( 2200, 500, 2500, 100)),
+    //     Some(LineSegment::new( 2500, 100, 2900, 800)),
+    //     Some(LineSegment::new( 2900, 800, 3000, 500)),
+    //     Some(LineSegment::new( 3000, 500, 3200, 1000)),
+    //     Some(LineSegment::new( 3200, 1000, 3500, 2000)),
+    //     Some(LineSegment::new( 3500, 2000, 3800, 800)),
+    //     Some(LineSegment::new( 3800, 800, 4000, 200)),
+    //     Some(LineSegment::new( 4000, 200, 5000, 200)),
+    //     Some(LineSegment::new( 5000, 200, 5500, 1500)),
+    //     Some(LineSegment::new( 5500, 1500, 6999, 2800)),
     // ];
     // let shuttle_point = Point {
     //     x: 500,
     //     y: 2700,
     // };
-    // let first_flat_index = 16;
-    // let second_flat_index = 17;
-    // let ground_points_size = 20;
+    // let flat_line_index = 16;
+    // let ground_points_size = 19;
 
     //#5
     // 0,1000 300,1500 350,1400 500,2100 1500,2100 2000,200 2500,500 2900,300 3000,200 3200,1000 3500,500 3800,800 4000,200 4200,800 4800,600 5000,1200 5500,900 6000,500 6500,300 6999,500
@@ -165,82 +161,78 @@ fn main() {
     // 0,450 300,750 1000,450 1500,650 1800,850 2000,1950 2200,1850 2400,2000 3100,1800 3150,1550 2500,1600 2200,1550 2100,750 2200,150 3200,150 3500,450 4000,950 4500,1450 5000,1550 5500,1500 6000,950 6999,1750
     // 6500 2600
     // let ground_points = [
-    //     Some(Point { x: 0, y: 450 }),
-    //     Some(Point { x: 300, y: 750 }),
-    //     Some(Point { x: 1000, y: 450 }),
-    //     Some(Point { x: 1500, y: 650 }),
-    //     Some(Point { x: 1800, y: 850 }),
-    //     Some(Point { x: 2000, y: 1950 }),
-    //     Some(Point { x: 2200, y: 1850 }),
-    //     Some(Point { x: 2400, y: 2000 }),
-    //     Some(Point { x: 3100, y: 1800 }),
-    //     Some(Point { x: 3150, y: 1550 }),
-    //     Some(Point { x: 2500, y: 1600 }),
-    //     Some(Point { x: 2200, y: 1550 }),
-    //     Some(Point { x: 2100, y: 750 }),
-    //     Some(Point { x: 2200, y: 150 }),
-    //     Some(Point { x: 3200, y: 150 }),
-    //     Some(Point { x: 3500, y: 450 }),
-    //     Some(Point { x: 4000, y: 950 }),
-    //     Some(Point { x: 4500, y: 1450 }),
-    //     Some(Point { x: 5000, y: 1550 }),
-    //     Some(Point { x: 5500, y: 1500 }),
-    //     Some(Point { x: 6000, y: 950 }),
-    //     Some(Point { x: 6999, y: 1750 }),
+    //     Some(LineSegment::new(0, 450, 300, 750)),
+    //     Some(LineSegment::new(300, 750, 1000, 450)),
+    //     Some(LineSegment::new(1000, 450, 1500, 650)),
+    //     Some(LineSegment::new(1500, 650, 1800, 850)),
+    //     Some(LineSegment::new(1800, 850, 2000, 1950)),
+    //     Some(LineSegment::new(2000, 1950, 2200, 1850)),
+    //     Some(LineSegment::new(2200, 1850, 2400, 2000)),
+    //     Some(LineSegment::new(2400, 2000, 3100, 1800)),
+    //     Some(LineSegment::new(3100, 1800, 3150, 1550)),
+    //     Some(LineSegment::new(3150, 1550, 2500, 1600)),
+    //     Some(LineSegment::new(2500, 1600, 2200, 1550)),
+    //     Some(LineSegment::new(2200, 1550, 2100, 750)),
+    //     Some(LineSegment::new(2100, 750, 2200, 150)),
+    //     Some(LineSegment::new(2200, 150, 3200, 150)),
+    //     Some(LineSegment::new(3200, 150, 3500, 450)),
+    //     Some(LineSegment::new(3500, 450, 4000, 950)),
+    //     Some(LineSegment::new(4000, 950, 4500, 1450)),
+    //     Some(LineSegment::new(4500, 1450, 5000, 1550)),
+    //     Some(LineSegment::new(5000, 1550, 5500, 1500)),
+    //     Some(LineSegment::new(5500, 1500, 6000, 950)),
+    //     Some(LineSegment::new(6000, 950, 6999, 1750)),
     // ];
     // let shuttle_point = Point {
     //     x: 6500,
     //     y: 2600,
     // };
-    // let first_flat_index = 13;
-    // let second_flat_index = 14;
-    // let ground_points_size = 22;
+    // let flat_line_index = 13;
+    // let ground_points_size = 21;
 
     //#2 Episode 3
     // 0,1800 300,1200 1000,1550 2000,1200 2500,1650 3700,220 4700,220 4750,1000 4700,1650 4000,1700 3700,1600 3750,1900 4000,2100 4900,2050 5100,1000 5500,500 6200,800 6999,600
     // 6500 2000
-    let ground_points = [
-        Some(LineSegment::new(0, 1800, 300, 1200)),
-        Some(LineSegment::new(300, 1200, 1000, 1550)),
-        Some(LineSegment::new(1000, 1550, 2000, 1200)),
-        Some(LineSegment::new(2000, 1200, 2500, 1650)),
-        Some(LineSegment::new(2500, 1650, 3700, 220)),
-        Some(LineSegment::new(3700, 220, 4700, 220)),
-        Some(LineSegment::new(4700, 220, 4750, 1000)),
-        Some(LineSegment::new(4750, 1000, 4700, 1650)),
-        Some(LineSegment::new(4700, 1650, 4000, 1700)),
-        Some(LineSegment::new(4000, 1700, 3700, 1600)),
-        Some(LineSegment::new(3700, 1600, 3750, 1900)),
-        Some(LineSegment::new(3750, 1900, 4000, 2100)),
-        Some(LineSegment::new(4000, 2100, 4900, 2050)),
-        Some(LineSegment::new(4900, 2050, 5100, 1000)),
-        Some(LineSegment::new(5100, 1000, 5500, 500)),
-        Some(LineSegment::new(5500, 500, 6200, 800)),
-        Some(LineSegment::new(6200, 800, 6999, 600)),
-    ];
-    let shuttle_point = Point {
-        x: 6500,
-        y: 2000,
-    };
-    let flat_line_index = 5;
-    let ground_points_size = 17;
+    // let ground_points = [
+    //     Some(LineSegment::new(0, 1800, 300, 1200)),
+    //     Some(LineSegment::new(300, 1200, 1000, 1550)),
+    //     Some(LineSegment::new(1000, 1550, 2000, 1200)),
+    //     Some(LineSegment::new(2000, 1200, 2500, 1650)),
+    //     Some(LineSegment::new(2500, 1650, 3700, 220)),
+    //     Some(LineSegment::new(3700, 220, 4700, 220)),
+    //     Some(LineSegment::new(4700, 220, 4750, 1000)),
+    //     Some(LineSegment::new(4750, 1000, 4700, 1650)),
+    //     Some(LineSegment::new(4700, 1650, 4000, 1700)),
+    //     Some(LineSegment::new(4000, 1700, 3700, 1600)),
+    //     Some(LineSegment::new(3700, 1600, 3750, 1900)),
+    //     Some(LineSegment::new(3750, 1900, 4000, 2100)),
+    //     Some(LineSegment::new(4000, 2100, 4900, 2050)),
+    //     Some(LineSegment::new(4900, 2050, 5100, 1000)),
+    //     Some(LineSegment::new(5100, 1000, 5500, 500)),
+    //     Some(LineSegment::new(5500, 500, 6200, 800)),
+    //     Some(LineSegment::new(6200, 800, 6999, 600)),
+    // ];
+    // let shuttle_point = Point {
+    //     x: 6500,
+    //     y: 2000,
+    // };
+    // let flat_line_index = 5;
+    // let ground_points_size = 17;
 
     //Dummy points
     // 0,1000 3000,2000 4000,300 6999,300
     // 2000 2500
     //  let ground_points = [
-    //     Some(Point { x: 0, y: 1000 }),
-    //     Some(Point { x: 3000, y: 2000 }),
-    //     Some(Point { x: 4000, y: 300 }),
-    //     Some(Point { x: 6999, y: 300 }),
+    //      Some(LineSegment::new(0, 1000, 3000, 2000)),
+    //      Some(LineSegment::new(3000, 2000, 4000, 300)),
+    //      Some(LineSegment::new(4000, 300, 6999, 300)),
     // ];
     // let shuttle_point = Point {
     //     x: 2000,
     //     y: 2500,
     // };
-    // let first_flat_index = 2;
-    // let second_flat_index = 3;
-    // let ground_points_size = 4;
+    // let flat_line_index = 2;
+    // let ground_points_size = 3;
 
     //TODO:
     // 1) Draw the best possible line from the flat ground to the ship.
@@ -250,8 +242,6 @@ fn main() {
     //  -Need to have both thrust and rotation as parameters here, probably want some restrictions to make
     //   choosing easier.
 
-    //TODO: Clean up the warnings maybe.
-    //TODO: After it is cleaned up, test all the examples I have out.
     let leeway_return_values = give_leeway_for_ground(
         &ground_points,
         ground_points_size,
