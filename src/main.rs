@@ -326,6 +326,7 @@ fn follow_path(
         ground_points,
         shuttle_path,
         0,
+        MoveResult::Unknown,
         2000.0,
         2500.0,
         0.0,
@@ -339,7 +340,9 @@ fn follow_path(
     move_list
 }
 
+#[derive(PartialEq, Clone, Copy)]
 enum MoveResult {
+    Unknown,
     MaximumAllowedSpeed(isize),
     RequiredRotation(isize),
     Successful,
@@ -370,6 +373,7 @@ fn run_single_move(
     ground_points: &[Option<LineSegment>],
     shuttle_path: &[Option<LineSegment>; 20],
     shuttle_path_index: usize,
+    passed_move_result: MoveResult,
     current_x: f64,
     current_y: f64,
     h_speed: f64,
@@ -383,249 +387,232 @@ fn run_single_move(
         return MoveResult::Successful;
     }
 
-    //TODO: probably need to pass in MoveResult as a parameter and as a return value
+    let mut move_result = passed_move_result;
 
-    let min_possible_thrust =
-        if thrust <= 0 {
-            0
-        } else {
-            thrust - 1
-        };
+    while move_result != MoveResult::Successful {
+        let min_possible_thrust =
+            if thrust <= 0 {
+                0
+            } else {
+                thrust - 1
+            };
 
-    let max_possible_thrust =
-        if thrust >= 4 {
-            4
-        } else {
-            thrust + 1
-        };
+        let max_possible_thrust =
+            if thrust >= 4 {
+                4
+            } else {
+                thrust + 1
+            };
 
-    let min_possible_rotation =
-        if rotation <= -75 {
-            rotation
-        } else {
-            rotation - 15
-        };
+        let min_possible_rotation =
+            if rotation <= -75 {
+                rotation
+            } else {
+                rotation - 15
+            };
 
-    let max_possible_rotation =
-        if rotation >= 75 {
-            rotation
-        } else {
-            rotation + 15
-        };
+        let max_possible_rotation =
+            if rotation >= 75 {
+                rotation
+            } else {
+                rotation + 15
+            };
 
-    let mut move_attempt_index = 0;
-    let mut move_attempt: [Option<ShuttleMoveAttempt>; 93] = [None; 93];
+        let mut move_attempt_index = 0;
+        let mut move_attempt: [Option<ShuttleMoveAttempt>; 93] = [None; 93];
 
-    // println!("min_t: {} max_t: {}", min_possible_thrust, max_possible_thrust);
-    // println!("min_r: {} max_r: {}", min_possible_rotation, max_possible_rotation);
+        // println!("min_t: {} max_t: {}", min_possible_thrust, max_possible_thrust);
+        // println!("min_r: {} max_r: {}", min_possible_rotation, max_possible_rotation);
 
-    for t in min_possible_thrust..=max_possible_thrust {
-        for r in min_possible_rotation..=max_possible_rotation {
+        let shuttle_path_element = &shuttle_path[shuttle_path_index];
+
+        let segment = &shuttle_path_element.unwrap();
+        let segment_start_point = &segment.start;
+        let segment_end_point = &segment.end;
+        let line_equation = &segment.line_equation;
+
+        for t in min_possible_thrust..=max_possible_thrust {
             let test_thrust = t as f64;
-            let test_rotation = r as f64;
 
-            //Calculate the initial velocity with the new thrust.
-            let h_speed_with_thrust = h_speed + (test_thrust * test_rotation / 90.0);
-            let v_speed_with_thrust = v_speed + test_thrust * (1.0 - f64::abs(test_rotation) / 90.0);
+            //TODO: write math
+            //TODO: handle case where m == -1
+            let ideal_x = (v_speed + test_thrust + current_x + h_speed - 3.711 / 2.0 - line_equation.b + current_y)/(line_equation.m + 1.0);
+            let ideal_y = ideal_x * line_equation.m + line_equation.b;
 
-            let new_x = h_speed_with_thrust + current_x;
-            let new_y = v_speed_with_thrust - 3.711 / 2.0 + current_y;
+            //TODO: Find the ideal rotation to reach the point.
+            //TODO: Find the closest possible rotation for this point.
+            //TODO: Calculate the actual value when this rotation and thrust are used.
+            //TODO: Store the score.
+        }
 
-            //Calculate the final velocity with the new thrust.
-            let new_h_speed = h_speed_with_thrust;
-            let new_v_speed = v_speed_with_thrust - 3.711;
+        for t in min_possible_thrust..=max_possible_thrust {
+            for r in min_possible_rotation..=max_possible_rotation {
+                let test_thrust = t as f64;
+                let test_rotation = r as f64;
 
-            // println!("new_h_speed: {new_h_speed} new_v_speed: {new_v_speed} test_t: {test_thrust} test_rot: {test_rotation} shuttle_path_index: {shuttle_path_index} new_x: {new_x} new_y: {new_y}");
+                //Calculate the initial velocity with the new thrust.
+                let h_speed_with_thrust = h_speed + (test_thrust * test_rotation / 90.0);
+                let v_speed_with_thrust = v_speed + test_thrust * (1.0 - f64::abs(test_rotation) / 90.0);
 
-            let shuttle_path_element = &shuttle_path[shuttle_path_index];
+                let new_x = h_speed_with_thrust + current_x;
+                let new_y = v_speed_with_thrust - 3.711 / 2.0 + current_y;
 
-            let segment = &shuttle_path_element.unwrap();
-            let start_point = &segment.start;
-            let end_point = &segment.end;
-            let line_equation = &segment.line_equation;
+                //Calculate the final velocity with the new thrust.
+                let new_h_speed = h_speed_with_thrust;
+                let new_v_speed = v_speed_with_thrust - 3.711;
 
-            let (shortest_x_to_new, shortest_y_to_new) = find_closest_point_on_line(
-                new_x,
-                new_y,
-                line_equation,
-                start_point.x,
-            );
+                // println!("new_h_speed: {new_h_speed} new_v_speed: {new_v_speed} test_t: {test_thrust} test_rot: {test_rotation} shuttle_path_index: {shuttle_path_index} new_x: {new_x} new_y: {new_y}");
 
-            let (shortest_x_to_current, shortest_y_to_current) = find_closest_point_on_line(
-                current_x,
-                current_y,
-                line_equation,
-                start_point.x,
-            );
-
-            let distance_to_segment = calculate_dist_for_two_points(
-                shortest_y_to_new,
-                new_y,
-                shortest_x_to_new,
-                new_x,
-            );
-
-            let (transformed_start, transformed_end, comparison_val) =
-                if line_equation.m.is_infinite() { //vertical line
-                    let multiplier =
-                        if new_y < shortest_y_to_new {
-                            -1.0
-                        } else {
-                            1.0
-                        };
-
-                    let transformed_start_y = start_point.y as f64 * multiplier;
-                    let transformed_end_y = end_point.y as f64 * multiplier;
-                    (transformed_start_y, transformed_end_y, new_y)
-                } else {
-                    let perpendicular_m = -1.0 / line_equation.m;
-
-                    let delta_x = distance_to_segment / (perpendicular_m * perpendicular_m + 1.0).sqrt();
-
-                    let multiplier =
-                        if new_x < shortest_x_to_new {
-                            -1.0
-                        } else {
-                            1.0
-                        };
-
-                    let transformed_start_x = start_point.x as f64 + (multiplier * delta_x);
-                    let transformed_end_x = end_point.x as f64 + (multiplier * delta_x);
-                    (transformed_start_x, transformed_end_x, new_x)
-                };
-
-            let (transformed_start, transformed_end) =
-                if transformed_start <= transformed_end {
-                    (transformed_start, transformed_end)
-                } else {
-                    (transformed_end, transformed_start)
-                };
-
-            let distance_along_segment = calculate_dist_for_two_points(
-                shortest_y_to_new,
-                shortest_y_to_current,
-                shortest_x_to_new,
-                shortest_x_to_current,
-            );
-
-
-            //TODO: I need to subtract points for the amount OVER the required thrust.
-            // It needs to fail if the objective is unreachable this move.
-            // I need to do more than this though right? The goal is to eliminate possibilities, I can't have every move running 90 times as it backtracks.
-
-            //TODO:
-            // So say I go shooting off the end of the line way too fast or in the wrong rotation.
-            // How do I know the actual speed and rotation I needed at that point?
-
-            //TODO:
-            // How do I properly backtrack?
-
-            //Highest score is the best.
-            let (past_segment, score) =
-                if transformed_start <= comparison_val
-                    && comparison_val <= transformed_end
-                { //current location is inside segment
-                    //TODO: things to consider
-                    // 1) distance to line
-                    // 2) distance traveled along line
-                    // 3) if traveled past line (maybe incorporate this into 1)
-                    // 4) the MoveResult or the v_speed, h_speed and rotation
-                    // 5) maybe the thrust (thrust doesn't always mean faster)
-
-                    let score = distance_along_segment - distance_to_segment;
-                    // println!("r {r} t {t} distance_along_segment: {distance_along_segment} distance_to_segment: {distance_to_segment} score: {score}");
-                    (false, score)
-                } else if comparison_val < transformed_start { //before start
-                    let distance_along_segment_from_start = calculate_dist_for_two_points(
-                        shortest_y_to_new,
-                        start_point.y as f64,
-                        shortest_x_to_new,
-                        start_point.x as f64,
-                    );
-                    let score = distance_along_segment - (distance_to_segment + distance_along_segment_from_start);
-                    (false, score)
-                } else { //after end
-                    let distance_along_segment_from_end = calculate_dist_for_two_points(
-                        shortest_y_to_new,
-                        end_point.y as f64,
-                        shortest_x_to_new,
-                        end_point.x as f64,
-                    );
-                    let score = distance_along_segment - (distance_to_segment + distance_along_segment_from_end);
-                    (true, score)
-                };
-
-            move_attempt[move_attempt_index] =
-                Some(
-                    ShuttleMoveAttempt {
-                        thrust: t,
-                        rotation: r,
-                        x: new_x,
-                        y: new_y,
-                        h_speed: new_h_speed,
-                        v_speed: new_v_speed,
-                        past_segment,
-                        score,
-                        fuel: fuel - t,
-                    }
+                let (shortest_x_to_new, shortest_y_to_new) = find_closest_point_on_line(
+                    new_x,
+                    new_y,
+                    line_equation,
+                    segment_start_point.x,
                 );
 
-            move_attempt_index += 1;
-        }
-    }
+                let (shortest_x_to_current, shortest_y_to_current) = find_closest_point_on_line(
+                    current_x,
+                    current_y,
+                    line_equation,
+                    segment_start_point.x,
+                );
 
-    //Put any value set to `None` at the end of the array. Order the rest by score in descending
-    // order.
-    move_attempt.sort_by(
-        |a, b|
-            if a.is_none() {
-                Ordering::Greater
-            } else if b.is_none() {
-                Ordering::Less
-            } else {
-                b.unwrap().score.partial_cmp(&a.unwrap().score).unwrap()
+                let distance_to_segment = calculate_dist_for_two_points(
+                    shortest_y_to_new,
+                    new_y,
+                    shortest_x_to_new,
+                    new_x,
+                );
+
+                let (transformed_start, transformed_end, comparison_val) =
+                    if line_equation.m.is_infinite() { //vertical line
+                        let multiplier =
+                            if new_y < shortest_y_to_new {
+                                -1.0
+                            } else {
+                                1.0
+                            };
+
+                        let transformed_start_y = segment_start_point.y as f64 * multiplier;
+                        let transformed_end_y = segment_end_point.y as f64 * multiplier;
+                        (transformed_start_y, transformed_end_y, new_y)
+                    } else {
+                        let perpendicular_m = -1.0 / line_equation.m;
+
+                        let delta_x = distance_to_segment / (perpendicular_m * perpendicular_m + 1.0).sqrt();
+                        let multiplier =
+                            if new_x < shortest_x_to_new {
+                                -1.0
+                            } else {
+                                1.0
+                            };
+
+                        let transformed_start_x = segment_start_point.x as f64 + (multiplier * delta_x);
+                        let transformed_end_x = segment_end_point.x as f64 + (multiplier * delta_x);
+                        (transformed_start_x, transformed_end_x, new_x)
+                    };
+
+                let (transformed_start, transformed_end) =
+                    if transformed_start <= transformed_end {
+                        (transformed_start, transformed_end)
+                    } else {
+                        (transformed_end, transformed_start)
+                    };
+
+                let distance_along_segment = calculate_dist_for_two_points(
+                    shortest_y_to_new,
+                    shortest_y_to_current,
+                    shortest_x_to_new,
+                    shortest_x_to_current,
+                );
+
+                //Highest score is the best.
+                let (past_segment, score) =
+                    if transformed_start <= comparison_val
+                        && comparison_val <= transformed_end
+                    { //current location is inside segment
+
+                        let score = distance_along_segment - distance_to_segment;
+                        // println!("r {r} t {t} distance_along_segment: {distance_along_segment} distance_to_segment: {distance_to_segment} score: {score}");
+                        (false, score)
+                    } else if comparison_val < transformed_start { //before start
+                        let distance_along_segment_from_start = calculate_dist_for_two_points(
+                            shortest_y_to_new,
+                            segment_start_point.y as f64,
+                            shortest_x_to_new,
+                            segment_start_point.x as f64,
+                        );
+                        let score = distance_along_segment - (distance_to_segment + distance_along_segment_from_start);
+                        (false, score)
+                    } else { //after end
+                        let distance_along_segment_from_end = calculate_dist_for_two_points(
+                            shortest_y_to_new,
+                            segment_end_point.y as f64,
+                            shortest_x_to_new,
+                            segment_end_point.x as f64,
+                        );
+                        let score = distance_along_segment - (distance_to_segment + distance_along_segment_from_end);
+                        (true, score)
+                    };
+
+                move_attempt[move_attempt_index] =
+                    Some(
+                        ShuttleMoveAttempt {
+                            thrust: t,
+                            rotation: r,
+                            x: new_x,
+                            y: new_y,
+                            h_speed: new_h_speed,
+                            v_speed: new_v_speed,
+                            past_segment,
+                            score,
+                            fuel: fuel - t,
+                        }
+                    );
+
+                move_attempt_index += 1;
             }
-    );
+        }
 
-    // println!("{:#?}", move_attempt);
-    println!("{:#?}", move_attempt[0]);
+        //Put any value set to `None` at the end of the array. Order the rest by score in descending
+        // order.
+        move_attempt.sort_by(
+            |a, b|
+                if a.is_none() {
+                    Ordering::Greater
+                } else if b.is_none() {
+                    Ordering::Less
+                } else {
+                    b.unwrap().score.partial_cmp(&a.unwrap().score).unwrap()
+                }
+        );
 
-    let single_move = &move_attempt[0].unwrap();
-    run_single_move(
-        ground_points,
-        shuttle_path,
-        if single_move.past_segment {
-            shuttle_path_index + 1
-        } else {
-            shuttle_path_index
-        },
-        single_move.x,
-        single_move.y,
-        single_move.h_speed,
-        single_move.v_speed,
-        single_move.rotation,
-        single_move.thrust,
-        number + 1,
-        single_move.fuel,
-    );
-    //TODO: If and when I detect a crash, need to backtrack. Maybe find the reason I crashed
-    // to begin with and send that back?
-    //TODO: Make sure rotation can be negative
+        // println!("{:#?}", move_attempt);
+        println!("{:#?}", move_attempt[0]);
 
-    //TODO: this is not longer complete, this will need to be calculated AFTER the shuttle_path_index
-    // is used to determine the actual point, then if the next point is after the shuttle_path_index
-    // line segment (not the largest x, but the actual end point), will need to recalculate it for
-    // the next shuttle_path_index. Will probably need to go PAST the end of the line, then turn.
-    // Assuming it doesn't crash into a wall.
+        let single_move = &move_attempt[0].unwrap();
+        move_result = run_single_move(
+            ground_points,
+            shuttle_path,
+            if single_move.past_segment {
+                shuttle_path_index + 1
+            } else {
+                shuttle_path_index
+            },
+            move_result,
+            single_move.x,
+            single_move.y,
+            single_move.h_speed,
+            single_move.v_speed,
+            single_move.rotation,
+            single_move.thrust,
+            number + 1,
+            single_move.fuel,
+        );
 
-    // let shortest_distance = find_closest_segment_and_point_on_segment(
-    //     shuttle_path,
-    //     shuttle_path_index,
-    //     current_x,
-    //     current_y,
-    // );
 
-    // println!("{:#?}", shortest_distance);
+        // println!("{:#?}", shortest_distance);
+    }
 
     MoveResult::Successful
 }
@@ -1735,13 +1722,13 @@ fn check_if_path_valid(
         let prev_value = temp_paths.get(&next_point);
 
         if prev_value.is_none()
-        //     || ((prev_value.unwrap().most_recent_move_direction != MoveDirection::LEFT
-        //     || prev_value.unwrap().most_recent_move_direction != MoveDirection::RIGHT)
-        //     && (move_direction == MoveDirection::LEFT
-        //     || move_direction == MoveDirection::RIGHT)
-        // )
-        || (prev_value.unwrap().most_recent_move_direction != MoveDirection::DOWN
-        && move_direction == MoveDirection::DOWN)
+            //     || ((prev_value.unwrap().most_recent_move_direction != MoveDirection::LEFT
+            //     || prev_value.unwrap().most_recent_move_direction != MoveDirection::RIGHT)
+            //     && (move_direction == MoveDirection::LEFT
+            //     || move_direction == MoveDirection::RIGHT)
+            // )
+            || (prev_value.unwrap().most_recent_move_direction != MoveDirection::DOWN
+            && move_direction == MoveDirection::DOWN)
         {
             path_clone.most_recent_move_direction = move_direction;
             path_clone.path.push(next_point);
