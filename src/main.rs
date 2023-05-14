@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 //The size of the squares the the map is divided into when finding the shortest path.
-const SIZE_OF_SQUARES: i32 = 50;
+const SIZE_OF_SQUARES: i32 = 100;
 
 //Amount of distance to take into consideration between shuttle and ground for shortest path.
 const AMOUNT_OF_LEEWAY: f64 = 50.0;
@@ -330,7 +330,8 @@ fn follow_path(
         2000.0,
         2500.0,
         0.0,
-        0.0,
+        1.8,
+        // 0.0,
         0,
         0,
         0,
@@ -427,8 +428,8 @@ fn run_single_move(
         let shuttle_path_element = &shuttle_path[shuttle_path_index];
 
         let segment = &shuttle_path_element.unwrap();
-        let segment_start_point = &segment.start;
-        let segment_end_point = &segment.end;
+        let start_point = &segment.start;
+        let end_point = &segment.end;
         let line_equation = &segment.line_equation;
 
         // Shortest path to a line.
@@ -527,8 +528,8 @@ fn run_single_move(
         for t in min_possible_thrust..=max_possible_thrust {
             let test_thrust = t as f64;
 
-            //Dy = (viy+thrust)
-            //thrust = Dy - vi
+            //Dy = (viy+thrust) + a/2
+            //thrust = Dy - vi - a/2
             let y_thrust_to_reach_line = shortest_y_pos - current_y - v_speed + 3.711 / 2.0;
 
             //The rotation on the shuttle goes from -90 to 90, the thrust for this can never
@@ -542,7 +543,7 @@ fn run_single_move(
 
             //Dx = (vix+thrust)
             //thrust = Dx - vi
-            let x_thrust_to_reach_line = (current_x - shortest_x_pos - h_speed).abs();
+            let x_thrust_to_reach_line = (shortest_x_pos - current_x - h_speed).abs();
 
             //This should always be > 0.
             let ideal_thrust = x_thrust_to_reach_line + y_thrust_to_reach_line;
@@ -556,19 +557,54 @@ fn run_single_move(
                 } else {
                     //Always positive.
                     let leftover_thrust = test_thrust - ideal_thrust;
-                    //m = ty/tx
+
+                    //m = Dy/Dx
+                    //m = (viy + ty + a/2)/(vix + tx)
                     //t = tx + ty
-                    //m * tx = ty
-                    //t = tx + m * tx
-                    //t = tx(1 + m)
-                    //t/(1+m) = tx
+                    //m(vix + tx) - viy - a/2 = ty
+                    //t = tx + m(vix + tx) - viy - a/2
+                    //t + viy + a/2 - m*vix = tx(1 + m)
+                    //(t + viy + a/2 - m*vix)/(1+m) = tx
+
+                    //Motivation for this is that I just care about the thrust to move along the line, initial velocity never
+                    // comes into it.
+                    //If I remove the acceleration from the equation, I get a y_thrust of 0, but is that what I want? in order
+                    // to properly travel along the line, I actually DO need some vertical thrust.
+                    //m = (ty + a/2)/tx
+                    //tx*m - a/2 = ty
+                    //t = tx + tx*m - a/2
+                    //(t+a/2)/(1+m) = tx
+
+                    //TODO: maybe what I want to do here is to calculate where I can actually reach on the line with the given
+                    // thrust
+                    // There is no guarantee that I CAN reach the line though because I cannot go down
+                    // Maybe I just look to see if the line is below me, if it is then I move to the left/right as far as possible,
+                    // it can be an exception. I do need to take into account vertical lines too.
+
+
+                    //TODO: something is wrong here, for some reason y_thrust_along_line is also set
+                    // working backwards,
+                    // Also need to remember that b/c I am traveling along the line, gravity pulls me
+                    // down, this means that I need some vertical acceleration to stay at this point over the next 1 second,
+                    // HOWEVER, I believe that is already taken into account with the _thrust_to_reach_line variables right?
+                    // NO! that calculates the values to get to the closest point on the line, as I travel along it, stuff
+                    //  happens.
+
+                    //TODO: Another problem with this approach is that it perfectly calculates the thrust to travel ALONG
+                    // the line, but if the y-velocity is too large, it will automatically still calculate in the extra y thrust
+                    // when in reality, it should not need the y-thrust because it already has it from residual thrust
+                    //TODO: Maybe in order to fix this other problem, I can take velocity and maybe even _thrust_to_reach_line
+                    // into account?
 
                     //TODO: a problem here, is which way do I travel along the line? right now I am
                     // assuming that the slope goes in the correct direction, but realistically I need to look
                     // at the line segment and see if it goes down or up, Maybe I can make it up by subtracting the
                     // start - end or end - start? can't do it w/ slope though.
+                    //TODO: both x direction and y direction share this problem.
                     //TODO: handle m == -1
-                    let x_thrust_along_line = (leftover_thrust / (1 + line_equation.m)).abs();
+
+                    // let x_thrust_along_line = ((leftover_thrust + v_speed - 3.711 / 2.0 - line_equation.m * h_speed) / (1.0 + line_equation.m)).abs();
+                    let x_thrust_along_line = ((leftover_thrust - 3.711 / 2.0) / (1.0 + line_equation.m)).abs(); //TODO: should this have v_speed and h_speed?
                     let y_thrust_along_line = leftover_thrust - x_thrust_along_line;
                     (x_thrust_along_line, y_thrust_along_line)
                 };
@@ -576,19 +612,29 @@ fn run_single_move(
             let ideal_x_thrust = x_thrust_to_reach_line + x_thrust_along_line;
             let ideal_y_thrust = y_thrust_to_reach_line + y_thrust_along_line;
 
+            //TODO: so I seem to be combining 2 different ideas here
+            // 1) The thrust_to_reach_line are a theoretical value that is separate from the actual thrust
+            // 2) The thrust_along_line is a value based on what is left over.
+            // This makes the `ideal__thrust` a combination of 2 different approaches
+            // Now I need to find if the x thrust
+            // Maybe I need to make sure that _thrust_to_reach_line is less than `t`
+            println!("line_equation: {:#?}", line_equation);
+            println!("t: {t} x_thrust_to_reach_line: {x_thrust_to_reach_line} x_thrust_along_line: {x_thrust_along_line} y_thrust_to_reach_line: {y_thrust_to_reach_line} y_thrust_along_line: {y_thrust_along_line} ideal_x_thrust: {ideal_x_thrust} ideal_y_thrust: {ideal_y_thrust} ideal {}", ideal_x_thrust + ideal_y_thrust);
+
             //TODO: rotation is based fundamentally on the x thrust
-            let ideal_rotation =
-                if ideal_y_thrust == 0.0 && ideal_x_thrust == 0.0 {
-                    //rotation doesn't matter, can set it to 0 or not change it
-                    rotation as f64
-                } else if ideal_y_thrust == 0.0 {
-                    //rotation must be -90 or 90
-                } else if ideal_x_thrust == 0.0 {
-                    //rotation must be 0
-                    0.0
-                } else { //x_thrust > 0 && y_thrust > 0
-                    //variable rotation
-                };
+            //TODO: do I want to use the ideal thrust here?
+            // let ideal_rotation =
+            //     if ideal_y_thrust == 0.0 && ideal_x_thrust == 0.0 {
+            //         //rotation doesn't matter, can set it to 0 or not change it
+            //         rotation as f64
+            //     } else if ideal_y_thrust == 0.0 {
+            //         //rotation must be -90 or 90
+            //     } else if ideal_x_thrust == 0.0 {
+            //         //rotation must be 0
+            //         0.0
+            //     } else { //x_thrust > 0 && y_thrust > 0
+            //         //variable rotation
+            //     };
 
             //TODO: Find the ideal rotation for this move
             //TODO: Find the closest possible rotation for this point.
