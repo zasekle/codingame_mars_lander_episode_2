@@ -331,7 +331,6 @@ fn follow_path(
         2500.0,
         0.0,
         1.8,
-        // 0.0,
         0,
         0,
         0,
@@ -384,7 +383,7 @@ fn run_single_move(
     number: isize,
     fuel: isize,
 ) -> MoveResult {
-    if number == 200 {
+    if number == 1 {
         return MoveResult::Successful;
     }
 
@@ -529,24 +528,35 @@ fn run_single_move(
             let test_thrust = t as f64;
 
             //Dy = (viy+thrust) + a/2
+
+            //thrust = Dy - viy - a/2
+            let raw_y_thrust_to_reach_line = shortest_y_pos - current_y - v_speed + 3.711 / 2.0;
+
             //thrust = Dy - vi - a/2
             let y_thrust_to_reach_line = shortest_y_pos - current_y - v_speed + 3.711 / 2.0;
 
             //The rotation on the shuttle goes from -90 to 90, the thrust for this can never
             // go down.
             let y_thrust_to_reach_line =
-                if y_thrust_to_reach_line < 0.0 {
+                if raw_y_thrust_to_reach_line < 0.0 {
                     0.0
                 } else {
-                    y_thrust_to_reach_line
+                    raw_y_thrust_to_reach_line
                 };
 
             //Dx = (vix+thrust)
+
+            //thrust = Dx - vix
+            let raw_x_thrust_to_reach_line = current_x - shortest_x_pos - h_speed;
+            let x_thrust_to_reach_line = (raw_x_thrust_to_reach_line).abs();
+
             //thrust = Dx - vi
             let x_thrust_to_reach_line = (shortest_x_pos - current_x - h_speed).abs();
 
+
+            //TODO: should this be the pythagorean?
             //This should always be > 0.
-            let ideal_thrust = x_thrust_to_reach_line + y_thrust_to_reach_line;
+            let ideal_thrust = (x_thrust_to_reach_line*x_thrust_to_reach_line + y_thrust_to_reach_line*y_thrust_to_reach_line).sqrt();
 
             //TODO: everything above this point can be outside the loop
 
@@ -557,6 +567,48 @@ fn run_single_move(
                 } else {
                     //Always positive.
                     let leftover_thrust = test_thrust - ideal_thrust;
+
+                    //m = Dy/Dx
+                    //m = (viy + ty + a/2)/(vix + tx)
+                    //t^2 = tx^2 + ty^2
+                    //m * (vix + tx) - viy - a/2 = ty
+
+                    //t = tx^2 + (m * (vix + tx) - viy - a/2)^2
+                    //0 = tx^2*(1 + m^2) + tx*(2*m*vix - 2*m^2*viy - m * a) + vix^2 + a*viy - t^2 - a^2/4
+                    //t^2 = a^2/4 - a m(t x + i v x) + i a v y - 2 i v y m(t x + i v x) + m(t x + i v x)^2 + t x^2 - v^2 y^2
+                    //t^2 = a^2/4 - a m(tx + ivx) + iavy - 2ivym(tx + iv x) + m(t x + i v x)^2 + t x^2 - v^2 y^2
+
+                    //vix = c
+                    //viy = b
+                    //tx = j
+                    // expand and collect t^2 = j^2 + (m*(c + j) - b - a/2)^2 in terms of j
+                    // -a^2/4 - a b + a c m + a j m - b^2 + 2 b c m + 2 b j m - c^2 m^2 - 2 c j m^2 - j^2 m^2 - j^2 + t^2 = 0
+                    // tx^2*(-m^2-1) + tx*(a*m + 2*viy*m - 2*vix*m^2) + t^2 - a^2/4 - a*viy + a*vix*m - viy^2 + 2*viy*vix*m + 2*viy*m - vix^2*m^2
+                    // A = -1 - m^2
+                    // B = a*m + 2*viy*m - 2*vix*m^2
+                    // C = t^2 - a^2/4 - a*viy + a*vix*m - viy^2 + 2*viy*vix*m + 2*viy*m - vix^2*m^2
+
+                    let quad_a = -1.0 - line_equation.m.powi(2);
+                    let quad_b = -3.711 * line_equation.m + 2.0 * v_speed * line_equation.m - 2.0 * h_speed * line_equation.m.powi(2);
+                    let quad_c = leftover_thrust.powi(2) - 13.7711521/4.0 + 3.711 * v_speed - 3.711 * h_speed * line_equation.m - v_speed.powi(2) + 2.0 * v_speed * h_speed * line_equation.m + 2.0 * v_speed * line_equation.m - h_speed.powi(2) * line_equation.m.powi(2);
+
+                    //TODO: need to make sure value under sqrt is >= 0
+                    // (-B +/- sqrt(B^2 - 4 * A * C)) / (2 * A)
+                    // Right now b == 0, not 100% sure why, the equation should have some solution, I think?
+
+                    //TODO: maybe I can just add in the thrust_to_line to the above equation?
+
+                    let tx_1 = (quad_b + (quad_b.powi(2) - 4.0 * quad_a * quad_c).sqrt())/(2.0 * quad_a);
+                    let tx_2 = (quad_b - (quad_b.powi(2) - 4.0 * quad_a * quad_c).sqrt())/(2.0 * quad_a);
+
+                    println!("a: {quad_a} b: {quad_b} c: {quad_c} tx_1: {tx_1} tx_2: {tx_2}");
+
+                    //TODO: Can I look at thrust like this?
+                    //TODO: I think the problem with looking at it this way is this. It doesn't take
+                    // the current velocity into account.
+                    //TODO: Can I split v_x an v_y and compare them individually?
+                    //TODO: Do I just get the ratio, then calculate it with the known thrust?
+                    //m = ty/tx
 
                     //m = Dy/Dx
                     //m = (viy + ty + a/2)/(vix + tx)
@@ -603,14 +655,19 @@ fn run_single_move(
                     //TODO: both x direction and y direction share this problem.
                     //TODO: handle m == -1
 
+                    let x_thrust_along_line = (leftover_thrust / (1.0 + line_equation.m)).abs();
+
                     // let x_thrust_along_line = ((leftover_thrust + v_speed - 3.711 / 2.0 - line_equation.m * h_speed) / (1.0 + line_equation.m)).abs();
                     let x_thrust_along_line = ((leftover_thrust - 3.711 / 2.0) / (1.0 + line_equation.m)).abs(); //TODO: should this have v_speed and h_speed?
+
                     let y_thrust_along_line = leftover_thrust - x_thrust_along_line;
                     (x_thrust_along_line, y_thrust_along_line)
                 };
 
             let ideal_x_thrust = x_thrust_to_reach_line + x_thrust_along_line;
             let ideal_y_thrust = y_thrust_to_reach_line + y_thrust_along_line;
+
+            println!("x_to_line: {x_thrust_to_reach_line} y_to_line: {y_thrust_to_reach_line} x_along_line: {x_thrust_along_line} y_along_line: {y_thrust_along_line} test_thrust {test_thrust} ideal_thrust {ideal_thrust}");
 
             //TODO: so I seem to be combining 2 different ideas here
             // 1) The thrust_to_reach_line are a theoretical value that is separate from the actual thrust
@@ -636,6 +693,20 @@ fn run_single_move(
             //         //variable rotation
             //     };
 
+            //TODO: rotation is based fundamentally on the x thrust
+            // let ideal_rotation =
+            //     if ideal_y_thrust == 0.0 && ideal_x_thrust == 0.0 {
+            //         //rotation doesn't matter, can set it to 0 or not change it
+            //         rotation as f64
+            //     } else if ideal_y_thrust == 0.0 {
+            //         //rotation must be -90 or 90
+            //     } else if ideal_x_thrust == 0.0 {
+            //         //rotation must be 0
+            //         0.0
+            //     } else { //x_thrust > 0 && y_thrust > 0
+            //         //variable rotation
+            //     };
+            //
             //TODO: Find the ideal rotation for this move
             //TODO: Find the closest possible rotation for this point.
             //TODO: Calculate the actual value when this rotation and thrust are used.
