@@ -530,20 +530,21 @@ fn run_single_move(
 
             //Dy = (viy+thrust) + a/2
             //thrust = Dy - vi - a/2
-            let y_thrust_to_reach_line = shortest_y_pos - current_y - v_speed + 3.711 / 2.0;
+            let raw_y_thrust_to_reach_line = shortest_y_pos - current_y - v_speed + 3.711 / 2.0;
 
             //The rotation on the shuttle goes from -90 to 90, the thrust for this can never
             // go down.
             let y_thrust_to_reach_line =
-                if y_thrust_to_reach_line < 0.0 {
+                if raw_y_thrust_to_reach_line < 0.0 {
                     0.0
                 } else {
-                    y_thrust_to_reach_line
+                    raw_y_thrust_to_reach_line
                 };
 
             //Dx = (vix+thrust)
             //thrust = Dx - vi
-            let x_thrust_to_reach_line = (shortest_x_pos - current_x - h_speed).abs();
+            let raw_x_thrust_to_reach_line = shortest_x_pos - current_x - h_speed;
+            let x_thrust_to_reach_line = raw_x_thrust_to_reach_line.abs();
 
             //This should always be > 0.
             let ideal_thrust = x_thrust_to_reach_line + y_thrust_to_reach_line;
@@ -558,6 +559,21 @@ fn run_single_move(
                     //Always positive.
                     let leftover_thrust = test_thrust - ideal_thrust;
 
+                    //TODO: I can
+                    // 1) calculate the ideal mathematically, then ignore any negative y thrust, I don't know that this will work b/c it will need to take
+                    //  into account the combined thrust for the formula to work
+                    // 2) continue trying what I am doing, how do I handle negative thrust?
+
+                    //TODO: maybe
+                    // save the original _thrust_to_reach line variables, even if negative
+                    // calculate the distance I can travel along the line based on test_thrust, get new_x and new_y
+                    // find new_y_t - og_y_thrust_to_reach_line and new_x_t - og_x_thrust (is it the same?)
+                    // can find abs of the x_thrust
+                    // if y_thrust <= 0, set it to 0
+                    // if x_thrust + y_thrust < test_thrust; ??(for example if moving down&left) maybe just add it to x thrust
+
+                    //if both y thrusts are <0 then ignore them, do other cases too
+
                     //m = Dy/Dx
                     //m = (viy + ty + a/2)/(vix + tx)
                     //t = tx + ty
@@ -565,6 +581,45 @@ fn run_single_move(
                     //t = tx + m(vix + tx) - viy - a/2
                     //t + viy + a/2 - m*vix = tx(1 + m)
                     //(t + viy + a/2 - m*vix)/(1+m) = tx
+
+                    if start_point.x < end_point.x { //move right
+
+                    } else if start_point.x > end_point.x { //move left
+
+                    } else { //vertical line
+
+                    }
+
+                    if start_point.y < end_point.y { //move up
+
+                    } else if start_point.y > end_point.y { //move down
+
+                    } else { //horizontal line
+
+                    }
+
+                    //TODO: what do I want?
+                    // I want to reach the line, then have everything else applied along the line
+                    // so I need to find the leftover thrust
+                    // Situations
+                    //  1) raw_y_to_line > 0 raw_x_to_line > 0;
+                    //  2) raw_y_to_line > 0 raw_x_to_line < 0;
+                    //  3) raw_y_to_line > 0 raw_x_to_line = 0;
+                    //  4) raw_y_to_line < 0 raw_x_to_line > 0;
+                    //  5) raw_y_to_line < 0 raw_x_to_line < 0;
+                    //  6) raw_y_to_line < 0 raw_x_to_line = 0;
+                    //  7) raw_y_to_line = 0 raw_x_to_line > 0;
+                    //  8) raw_y_to_line = 0 raw_x_to_line < 0;
+                    //  9) raw_y_to_line = 0 raw_x_to_line = 0;
+
+                    //TODO: the raw__to_line will have thrust going in negative or positive directions.
+                    //TODO: if I set up the raw__along_line to be the same (using above conditions) I can tell the rotation as well.
+                    //TODO: need to remember that - x thrust is not compatible with + x thrust either, raw values must be used.
+                    //TODO: I think it is just raw__along_line - raw__to_line; assuming I use test_thrust to generate raw__along_line
+                    // but for example, if raw_x_along_line is negative and raw_x_to_line is positive, thrust will grow, when in reality I want it to shrink
+
+                    let raw_x_thrust_along_line = (test_thrust + v_speed - 3.711 / 2.0 - line_equation.m * h_speed) / (1.0 + line_equation.m);
+                    let raw_y_thrust_along_line = leftover_thrust - x_thrust_along_line;
 
                     //Motivation for this is that I just care about the thrust to move along the line, initial velocity never
                     // comes into it.
@@ -580,7 +635,6 @@ fn run_single_move(
                     // There is no guarantee that I CAN reach the line though because I cannot go down
                     // Maybe I just look to see if the line is below me, if it is then I move to the left/right as far as possible,
                     // it can be an exception. I do need to take into account vertical lines too.
-
 
                     //TODO: something is wrong here, for some reason y_thrust_along_line is also set
                     // working backwards,
