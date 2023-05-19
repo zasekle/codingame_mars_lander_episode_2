@@ -2,6 +2,8 @@
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::f64::consts::PI;
+use std::fs::OpenOptions;
 use std::time::Instant;
 
 //The size of the squares the the map is divided into when finding the shortest path.
@@ -419,7 +421,7 @@ fn run_single_move(
             };
 
         let mut move_attempt_index = 0;
-        let mut move_attempt: [Option<ShuttleMoveAttempt>; 93] = [None; 93];
+        let mut move_attempt: [Option<ShuttleMoveAttempt>; 93] = [None; 93]; //TODO: don't need 93
 
         // println!("min_t: {} max_t: {}", min_possible_thrust, max_possible_thrust);
         // println!("min_r: {} max_r: {}", min_possible_rotation, max_possible_rotation);
@@ -545,442 +547,146 @@ fn run_single_move(
             //Dx = (vix+thrust) + a/2
             //thrust = Dx - vix - a/2
             let raw_x_thrust_to_reach_line = shortest_x_pos - current_x - h_speed;
-            let x_thrust_to_reach_line = raw_x_thrust_to_reach_line.abs();
 
-            //This should always be > 0.
-            let ideal_thrust = (x_thrust_to_reach_line.powi(2) + y_thrust_to_reach_line.powi(2)).sqrt();
+            //|v|^2 = vx^2 + vy^2
+            //(|v| + t)^2 = (vx + tx)^2 + (vy + ty)^2
+            //t = sqrt((vx + tx)^2 + (vy + ty)^2) - sqrt(vx^2 + vy^2)
+            //TODO: unsure how to leverage x_thrust, if tx brings vx down OR if ty brings vy down, then the first sqrt
+            // will be smaller than the second one causing a negative value to be returned. I could just subtract whichever
+            // one is larger from the other, I could force the signs to be negative then abs the final value
+            let thrust_to_line = ((h_speed + raw_x_thrust_to_reach_line) + (v_speed + y_thrust_to_reach_line).powi(2)).sqrt() - (h_speed.powi(2) + v_speed.powi(2)).sqrt();
+            // let ideal_thrust = (x_thrust_to_reach_line.powi(2) + y_thrust_to_reach_line.powi(2)).sqrt();
 
+            println!("thrust_to_line: {thrust_to_line}");
             //TODO: everything above this point can be outside the loop
 
-            //The leftover thrust needs to be directed `along` the line.
-            let (x_thrust_along_line, y_thrust_along_line) =
-                if test_thrust <= ideal_thrust {
-                    (0.0, 0.0)
+            //TODO: need to set this inside below block
+            let mut single_move_attempt = ShuttleMoveAttempt {
+                thrust: t,
+                rotation: 0,
+                x: current_x,
+                y: current_y,
+                h_speed,
+                v_speed,
+                past_segment: false,
+                score: 0.0,
+                fuel: fuel - t,
+            };
+
+            let ideal_rotation =
+                if test_thrust <= thrust_to_line {
+                    //If not enough thrust to reach the line, get as close as possible.
+
+                    //Convert it to a vector.
+                    let vector_x = shortest_x - current_x;
+                    let vector_y = shortest_y - current_y;
+
+                    //Find the angle in degrees.
+                    let angle_in_degrees = (vector_y.abs() / vector_x.abs()).atan() * 180.0 / PI;
+
+                    //Convert to rotation.
+                    let rot =
+                        if vector_x < 0.0 && vector_y <= 0.0 { //quadrant 3
+                            90.0
+                        } else if vector_x < 0.0 && vector_y > 0.0 { //quadrant 2
+                            90.0 - angle_in_degrees
+                        } else if vector_x > 0.0 && vector_y <= 0.0 { //quadrant 4
+                            -90.0
+                        } else if vector_x > 0.0 && vector_y > 0.0 { //quadrant 1
+                            -(90.0 - angle_in_degrees)
+                        } else if vector_x == 0.0 && vector_y == 0.0 {
+                            //TODO: orient with the line. literally call the same function lol
+                            // might be nice to just store the ideal rotation inside the line_ itself
+                            // then I could just grab the rotation.
+                            ()
+                        } else { // vector_x == 0.0
+                            0.0
+                        };
+
+                    rot.round() as isize
                 } else {
-                    //Always positive.
-                    let leftover_thrust = test_thrust - ideal_thrust;
+                    //If enough thrust to reach the line, use the remaining thrust to travel along it.
+                    //TODO: there is actually a problem here, if say I need to go down and cannot have
+                    // negative thrust on the y axis, then I could NOT reach the line.
+                    // Probably handle this by checking the the solution exists, if it does NOT just return
+                    //  the default values for moving towards the line. (go through below and look at places
+                    //  it could `not exist`)
+                    // OR better yet if I can't make it to the line, I just need to have a 90 or -90 rot.
 
-                    println!("m: {} vix: {h_speed} viy: {v_speed} leftover_thrust: {leftover_thrust} test_thrust {test_thrust} ideal_thrust {ideal_thrust}", line_equation.m);
+                    //TODO: put the math in for posterity(:()
 
-                    //TODO: maybe?
-                    // (vf + t)^2 = (vix + tx)^2 + (viy + ty)^2
-                    // vf^2 = vix^2 + viy^2
-                    // What I want is the relationship between the leftover_thrust, the test_thrust and the ideal_thrust
-
-                    //solve 0 = (1.8 + y - 3.711/2)/x, (0.9445)^2 = y^2 + x^2
-
-                    //Find tx and ty of the leftover thrust.
-                    //m = Dy/Dx
-                    //m = (viy + ty + a/2)/(vix + tx)
-                    //t^2 = tx^2 + ty^2
-                    //m * (vix + tx) - viy - a/2 = ty
-                    //t^2 = tx^2 + (m * (vix + tx) - viy - a/2)^2
-                    //t^2 = tx^2 + (m*vix + m*tx - viy - a/2)^2
-                    //t^2 = tx^2 +
-                    // m^2*vix^2 + m^2*tx*vix - m*vix*viy - m*vix*a/2 +
-                    // m^2*vix*tx + m^2*tx^2 - m*tx*viy - m*tx*a/2 -
-                    // m*vix*viy - m*tx*viy + viy^2 + viy*a/2 -
-                    // m*vix*a/2 - m*tx*a/2 + viy*a/2 + a^2/4
-
-                    //t^2 = tx^2 +
-                    // m^2*vix^2 + 2*m^2*tx*vix - 2*m*vix*viy - m*vix*a +
-                    // m^2*tx^2 - 2*m*tx*viy - 2*m*tx*a/2 + viy*a
-                    // viy^2 + a^2/4
-
-                    //0 = tx^2 + m^2*vix^2 + 2*m^2*tx*vix - 2*m*vix*viy - m*vix*a + m^2*tx^2 - 2*m*tx*viy + viy*a - 2*m*tx*a/2 + viy^2 + a^2/4 - t^2
-                    //0 = tx^2(m^2 + 1) + tx*(2*m^2*vix - 2*m*viy - a*m) + m^2*vix^2 - 2*m*vix*viy + a*viy - a*m*vix + viy^2 + a^2/4 - t^2
-                    // A = m^2 + 1
-                    // B = 2*m^2*vix - 2*m*viy - a*m
-                    // C = m^2*vix^2 - 2*m*vix*viy + a*viy - a*m*vix + viy^2 + a^2/4 - t^2
-
-
-                    let quad_const = line_equation.b - current_y + 3.711/2.0;
+                    let quad_const = line_equation.b - current_y + 3.711 / 2.0;
                     let velocity_magnitude = (v_speed.powi(2) + h_speed.powi(2)).sqrt();
 
                     let quad_a = line_equation.m.powi(2) + 1.0;
                     let quad_b = 2.0 * line_equation.m * quad_const - 2.0 * current_x;
                     let quad_c = current_x.powi(2) + quad_const.powi(2) - (velocity_magnitude + test_thrust).powi(2);
 
-                    // TODO: these were for (vi + t)^2 = (vx + tx)^2 + (vy + ty)^2
-                    // let quad_b = 2.0 * h_speed + 3.711 * line_equation.m + 2.0 * h_speed * line_equation.m.powi(2);
-                    // let quad_c = h_speed.powi(2) + 13.7711521 / 4.0 + 3.711 * h_speed * line_equation.m + h_speed.powi(2) * line_equation.m.powi(2) - ((v_speed.powi(2) + h_speed.powi(2)).sqrt() + leftover_thrust).powi(2);
-                    // TODO: these were for t^2 = tx^2 + ty^2
-                    // let quad_b = 2.0 * line_equation.m.powi(2) * h_speed - 2.0 * line_equation.m * v_speed + 3.711 * line_equation.m;
-                    // let quad_c = line_equation.m.powi(2) * h_speed.powi(2) - 2.0 * line_equation.m * h_speed * v_speed - 3.711 * v_speed + 3.711 * line_equation.m * h_speed + v_speed.powi(2) + 13.7711521 / 4.0 - leftover_thrust.powi(2);
-
-                    //TODO: maybe just put the whole thing into wolfram alpha and get the solution, then compare it to mine
-
-                    //TODO: a few problems,
-                    // 1) not getting test_thrust == total_thrust
-                    // 2) Wolfram Alpha gives different results for tx and ty
-                    //  Mine  tx: 0.9429168706731258 ty: 0.05466283014992866
-                    //  Wolf  tx: 0.942868           ty: 0.0555
-                    // 3) Even if tx and ty are used from Wolfram, test_thrust != total_thrust
-
                     // (-B +/- sqrt(B^2 - 4 * A * C)) / (2 * A)
                     //Because the thrust is always checked to be enough to get to the line before
                     // getting here, value under sqrt should always be >= 0.
-                    let tx_1 = (-quad_b + (quad_b.powi(2) - 4.0 * quad_a * quad_c).sqrt()) / (2.0 * quad_a);
-                    let tx_2 = (-quad_b - (quad_b.powi(2) - 4.0 * quad_a * quad_c).sqrt()) / (2.0 * quad_a);
+                    let x_pos_1 = (-quad_b + (quad_b.powi(2) - 4.0 * quad_a * quad_c).sqrt()) / (2.0 * quad_a);
+                    let x_pos_2 = (-quad_b - (quad_b.powi(2) - 4.0 * quad_a * quad_c).sqrt()) / (2.0 * quad_a);
 
-                    println!("quad_a {quad_a} quad_b {quad_b} quad_c {quad_c}");
-                    println!("tx_1 {tx_1} tx_2 {tx_2}");
-
-                    let raw_x_thrust_along_line =
+                    let new_x_pos =
                         if start_point.x < end_point.x { //move right
                             //Need positive thrust, largest value.
-                            if tx_1 < tx_2 {
-                                tx_2
+                            if x_pos_1 < x_pos_2 {
+                                x_pos_2
                             } else {
-                                tx_1
+                                x_pos_1
                             }
                         } else if start_point.x > end_point.x { //move left
                             //Need negative thrust, smallest value.
-                            if tx_1 < tx_2 {
-                                tx_1
+                            if x_pos_1 < x_pos_2 {
+                                x_pos_1
                             } else {
-                                tx_2
+                                x_pos_2
                             }
                         } else { //vertical line
                             0.0
                         };
 
-                    //t^2 = tx^2 + ty^2
-                    //ty = +/- sqrt(t^2 - tx^2)
-                    // let ty_1 = (leftover_thrust.powi(2) - raw_x_thrust_along_line.powi(2)).sqrt();
-                    // let ty_2 = -(leftover_thrust.powi(2) - raw_x_thrust_along_line.powi(2)).sqrt();
-                    let raw_y_thrust_along_line = line_equation.m * h_speed + line_equation.m * raw_x_thrust_along_line - v_speed + 3.711/2.0;
+                    let new_y_pos = line_equation.m * new_x_pos + line_equation.b;
 
-                    // println!("ty_1: {ty_1} ty_2: {ty_2}");
-                    // let raw_y_thrust_along_line =
-                    //     if start_point.y <= end_point.y { //move up
-                    //         //A horizontal line will require a thrust to fight against gravity.
-                    //         //Need positive thrust, largest value.
-                    //         if ty_1 < ty_2 {
-                    //             ty_2
-                    //         } else {
-                    //             ty_1
-                    //         }
-                    //     } else { // start_point.y > end_point.y { //move down
-                    //         //Need negative thrust, smallest value.
-                    //         if ty_1 < ty_2 {
-                    //             ty_1
-                    //         } else {
-                    //             ty_2
-                    //         }
-                    //     };
+                    let raw_thrust_x = new_x_pos - current_x - h_speed;
+                    let raw_thrust_y = new_y_pos - current_y - v_speed + 3.711 / 2.0;
 
-                    let total_raw_y_thrust = raw_y_thrust_to_reach_line + raw_y_thrust_along_line;
-
-                    //TODO: if one is positive and the other negative, will I use all the thrust?
-                    let total_raw_x_thrust = raw_x_thrust_to_reach_line + raw_x_thrust_along_line;
-
-                    //Cannot include the raw_y_thrust_to_reach line, it is a theoretical value and could
-                    // be MUCH larger than thrust.
-                    let leftover_y_thrust =
-                        if raw_y_thrust_along_line < 0.0 {
-                            raw_y_thrust_along_line * -1.0
-                        } else {
-                            0.0
-                        };
-
-                    let total_y_thrust =
-                        if total_raw_y_thrust < 0.0 {
+                    //X thrust must be a positive value. However, it can go in either direction.
+                    let thrust_x = raw_thrust_x.abs();
+                    //Y thrust cannot be negative, it simply means that thrust along the y-axis is 0.
+                    let thrust_y =
+                        if raw_thrust_y < 0.0 {
                             0.0
                         } else {
-                            total_raw_y_thrust
+                            raw_thrust_y
                         };
 
-                    //Because the y thrust can become negative and be trimmed off, any extra can be added on to the x direction instead.
-                    let total_x_thrust = total_raw_x_thrust.abs() + leftover_y_thrust;
-
-                    let total_thrust = ((v_speed + total_y_thrust).powi(2) + (h_speed + total_x_thrust).powi(2)).sqrt() - (v_speed.powi(2) + h_speed.powi(2)).sqrt();
-
-                    let percent_x = total_x_thrust / (total_y_thrust + total_x_thrust);
+                    let percent_x = thrust_x / (thrust_y + thrust_x);
                     let raw_ideal_rotation = (90.0 * percent_x).round() as isize;
 
-                    let ideal_rotation =
-                        if total_raw_x_thrust > 0.0 {
+                    let rotation =
+                        if raw_thrust_x > 0.0 {
                             raw_ideal_rotation * -1
                         } else {
                             raw_ideal_rotation
                         };
 
-                    //TODO: don't actually need total_thrust BUT, it can be used for testing because it can line up with test_thrust
-                    //TODO: why isn't total_thrust equal to test_thrust? it should at least be close I think. Am I a decimal place off? raw_y_to_line is so small.
-                    // But I don't think that should matter either, it should still come out as test_thrust.
-                    println!("leftover_y_thrust {leftover_y_thrust}");
-                    println!("raw_x_along_line: {raw_x_thrust_along_line} raw_y_along_line: {raw_y_thrust_along_line} raw_x_to_line: {raw_x_thrust_to_reach_line} raw_y_to_line: {raw_y_thrust_to_reach_line} total_x_thrust: {total_x_thrust} total_y_thrust: {total_y_thrust} total_thrust: {total_thrust} ideal_rotation: {ideal_rotation}");
+                    println!("new_x_pos: {new_x_pos} new_y_pos: {new_y_pos} rotation: {rotation} test_thrust: {test_thrust}");
 
-                    //TODO: why am I calculating total_thrust?, ideally it should be 1 right?
-                    // The thrust for this `move` will always be test_thrust.
-
-                    //TODO:
-                    // need to add the raw_y_to_line thrust with ty
-                    //  if the value is negative, set it to 0
-                    //  if the value is positive or 0, keep it
-                    // need to add raw_x_to_line thrust with tx
-                    //  if positive, need negative rotation
-                    //  if negative, need positive rotation
-                    //  if 0 need rotation of 0
-
-                    //TODO:
-                    // check the final thrust (thrust_along_line + thrust_to_line), can lose thrust
-                    // on the y-axis because it is chopped off, if it is low, add the remaining
-                    // thrust to the x-axis thrust; the problem is that I may put the thrust over the
-                    // required amount, for example if the negative thrust missing from y (b/c it was
-                    // brought to 0) is very small, some of the thrust 'along the line' should also
-                    // be applied to the y thrust
-
-
-                    //TODO:
-                    // calculate rotation required for final thrust
-
-
-                    //TODO: what do I want?
-                    // I want to reach the line, then have everything else applied along the line
-                    // so I need to find the leftover thrust
-                    // Situations
-                    //  1) raw_y_to_line > 0 raw_x_to_line > 0;
-                    //  2) raw_y_to_line > 0 raw_x_to_line < 0;
-                    //  3) raw_y_to_line > 0 raw_x_to_line = 0;
-                    //  4) raw_y_to_line < 0 raw_x_to_line > 0;
-                    //  5) raw_y_to_line < 0 raw_x_to_line < 0;
-                    //  6) raw_y_to_line < 0 raw_x_to_line = 0;
-                    //  7) raw_y_to_line = 0 raw_x_to_line > 0;
-                    //  8) raw_y_to_line = 0 raw_x_to_line < 0;
-                    //  9) raw_y_to_line = 0 raw_x_to_line = 0;
-
-                    //TODO: the raw__to_line will have thrust going in negative or positive directions.
-                    //TODO: if I set up the raw__along_line to be the same (using above conditions) I can tell the rotation as well.
-                    //TODO: need to remember that - x thrust is not compatible with + x thrust either, raw values must be used.
-
-                    // let raw_x_thrust_along_line = (test_thrust + v_speed - 3.711 / 2.0 - line_equation.m * h_speed) / (1.0 + line_equation.m);
-                    // let raw_y_thrust_along_line = leftover_thrust - x_thrust_along_line;
-
-                    //Motivation for this is that I just care about the thrust to move along the line, initial velocity never
-                    // comes into it.
-                    //If I remove the acceleration from the equation, I get a y_thrust of 0, but is that what I want? in order
-                    // to properly travel along the line, I actually DO need some vertical thrust.
-                    //m = (ty + a/2)/tx
-                    //tx*m - a/2 = ty
-                    //t = tx + tx*m - a/2
-                    //(t+a/2)/(1+m) = tx
-
-                    //TODO: maybe what I want to do here is to calculate where I can actually reach on the line with the given
-                    // thrust
-                    // There is no guarantee that I CAN reach the line though because I cannot go down
-                    // Maybe I just look to see if the line is below me, if it is then I move to the left/right as far as possible,
-                    // it can be an exception. I do need to take into account vertical lines too.
-
-                    //TODO: something is wrong here, for some reason y_thrust_along_line is also set
-                    // working backwards,
-                    // Also need to remember that b/c I am traveling along the line, gravity pulls me
-                    // down, this means that I need some vertical acceleration to stay at this point over the next 1 second,
-                    // HOWEVER, I believe that is already taken into account with the _thrust_to_reach_line variables right?
-                    // NO! that calculates the values to get to the closest point on the line, as I travel along it, stuff
-                    //  happens.
-
-                    //TODO: Another problem with this approach is that it perfectly calculates the thrust to travel ALONG
-                    // the line, but if the y-velocity is too large, it will automatically still calculate in the extra y thrust
-                    // when in reality, it should not need the y-thrust because it already has it from residual thrust
-                    //TODO: Maybe in order to fix this other problem, I can take velocity and maybe even _thrust_to_reach_line
-                    // into account?
-
-                    //TODO: a problem here, is which way do I travel along the line? right now I am
-                    // assuming that the slope goes in the correct direction, but realistically I need to look
-                    // at the line segment and see if it goes down or up, Maybe I can make it up by subtracting the
-                    // start - end or end - start? can't do it w/ slope though.
-                    //TODO: both x direction and y direction share this problem.
-                    //TODO: handle m == -1
-
-                    let x_thrust_along_line = (leftover_thrust / (1.0 + line_equation.m)).abs();
-
-                    // let x_thrust_along_line = ((leftover_thrust + v_speed - 3.711 / 2.0 - line_equation.m * h_speed) / (1.0 + line_equation.m)).abs();
-                    let x_thrust_along_line = ((leftover_thrust - 3.711 / 2.0) / (1.0 + line_equation.m)).abs(); //TODO: should this have v_speed and h_speed?
-
-                    let y_thrust_along_line = leftover_thrust - x_thrust_along_line;
-                    (x_thrust_along_line, y_thrust_along_line)
+                    rotation
                 };
 
-            let ideal_x_thrust = x_thrust_to_reach_line + x_thrust_along_line;
-            let ideal_y_thrust = y_thrust_to_reach_line + y_thrust_along_line;
-
-            // println!("x_to_line: {x_thrust_to_reach_line} y_to_line: {y_thrust_to_reach_line} x_along_line: {x_thrust_along_line} y_along_line: {y_thrust_along_line} test_thrust {test_thrust} ideal_thrust {ideal_thrust}");
-
-            //TODO: so I seem to be combining 2 different ideas here
-            // 1) The thrust_to_reach_line are a theoretical value that is separate from the actual thrust
-            // 2) The thrust_along_line is a value based on what is left over.
-            // This makes the `ideal__thrust` a combination of 2 different approaches
-            // Now I need to find if the x thrust
-            // Maybe I need to make sure that _thrust_to_reach_line is less than `t`
-            // println!("line_equation: {:#?}", line_equation);
-            // println!("t: {t} x_thrust_to_reach_line: {x_thrust_to_reach_line} x_thrust_along_line: {x_thrust_along_line} y_thrust_to_reach_line: {y_thrust_to_reach_line} y_thrust_along_line: {y_thrust_along_line} ideal_x_thrust: {ideal_x_thrust} ideal_y_thrust: {ideal_y_thrust} ideal {}", ideal_x_thrust + ideal_y_thrust);
-
-            //TODO: rotation is based fundamentally on the x thrust
-            //TODO: do I want to use the ideal thrust here?
-            // let ideal_rotation =
-            //     if ideal_y_thrust == 0.0 && ideal_x_thrust == 0.0 {
-            //         //rotation doesn't matter, can set it to 0 or not change it
-            //         rotation as f64
-            //     } else if ideal_y_thrust == 0.0 {
-            //         //rotation must be -90 or 90
-            //     } else if ideal_x_thrust == 0.0 {
-            //         //rotation must be 0
-            //         0.0
-            //     } else { //x_thrust > 0 && y_thrust > 0
-            //         //variable rotation
-            //     };
-
-            //TODO: rotation is based fundamentally on the x thrust
-            // let ideal_rotation =
-            //     if ideal_y_thrust == 0.0 && ideal_x_thrust == 0.0 {
-            //         //rotation doesn't matter, can set it to 0 or not change it
-            //         rotation as f64
-            //     } else if ideal_y_thrust == 0.0 {
-            //         //rotation must be -90 or 90
-            //     } else if ideal_x_thrust == 0.0 {
-            //         //rotation must be 0
-            //         0.0
-            //     } else { //x_thrust > 0 && y_thrust > 0
-            //         //variable rotation
-            //     };
-            //
-            //TODO: Find the ideal rotation for this move
-            //TODO: Find the closest possible rotation for this point.
-            //TODO: Calculate the actual value when this rotation and thrust are used.
-            //TODO: Store the score.
-            //TODO: Outside the loop, sort the score and get the best.
+            println!("ideal_rotation: {ideal_rotation}");
+            //TODO: I have the ideal move, now with these values I need to calculate what the
+            // actual move will be
+            //TODO: When calculating the score, I can check if it is passed the end of the segment
+            // actually if it is passed the segment is already calculated above
+            // move_attempt[(t - min_possible_thrust) as usize] =
+            //     Some(
+            //         single_move_attempt
+            //     );
         }
-
-        // for t in min_possible_thrust..=max_possible_thrust {
-        //     for r in min_possible_rotation..=max_possible_rotation {
-        //         let test_thrust = t as f64;
-        //         let test_rotation = r as f64;
-        //
-        //         //Calculate the initial velocity with the new thrust.
-        //         let h_speed_with_thrust = h_speed + (test_thrust * test_rotation / 90.0);
-        //         let v_speed_with_thrust = v_speed + test_thrust * (1.0 - f64::abs(test_rotation) / 90.0);
-        //
-        //         let new_x = h_speed_with_thrust + current_x;
-        //         let new_y = v_speed_with_thrust - 3.711 / 2.0 + current_y;
-        //
-        //         //Calculate the final velocity with the new thrust.
-        //         let new_h_speed = h_speed_with_thrust;
-        //         let new_v_speed = v_speed_with_thrust - 3.711;
-        //
-        //         // println!("new_h_speed: {new_h_speed} new_v_speed: {new_v_speed} test_t: {test_thrust} test_rot: {test_rotation} shuttle_path_index: {shuttle_path_index} new_x: {new_x} new_y: {new_y}");
-        //
-        //         let (shortest_x_to_new, shortest_y_to_new) = find_closest_point_on_line(
-        //             new_x,
-        //             new_y,
-        //             line_equation,
-        //             segment_start_point.x,
-        //         );
-        //
-        //         let (shortest_x_to_current, shortest_y_to_current) = find_closest_point_on_line(
-        //             current_x,
-        //             current_y,
-        //             line_equation,
-        //             segment_start_point.x,
-        //         );
-        //
-        //         let distance_to_segment = calculate_dist_for_two_points(
-        //             shortest_y_to_new,
-        //             new_y,
-        //             shortest_x_to_new,
-        //             new_x,
-        //         );
-        //
-        //         let (transformed_start, transformed_end, comparison_val) =
-        //             if line_equation.m.is_infinite() { //vertical line
-        //                 let multiplier =
-        //                     if new_y < shortest_y_to_new {
-        //                         -1.0
-        //                     } else {
-        //                         1.0
-        //                     };
-        //
-        //                 let transformed_start_y = segment_start_point.y as f64 * multiplier;
-        //                 let transformed_end_y = segment_end_point.y as f64 * multiplier;
-        //                 (transformed_start_y, transformed_end_y, new_y)
-        //             } else {
-        //                 let perpendicular_m = -1.0 / line_equation.m;
-        //
-        //                 let delta_x = distance_to_segment / (perpendicular_m * perpendicular_m + 1.0).sqrt();
-        //                 let multiplier =
-        //                     if new_x < shortest_x_to_new {
-        //                         -1.0
-        //                     } else {
-        //                         1.0
-        //                     };
-        //
-        //                 let transformed_start_x = segment_start_point.x as f64 + (multiplier * delta_x);
-        //                 let transformed_end_x = segment_end_point.x as f64 + (multiplier * delta_x);
-        //                 (transformed_start_x, transformed_end_x, new_x)
-        //             };
-        //
-        //         let (transformed_start, transformed_end) =
-        //             if transformed_start <= transformed_end {
-        //                 (transformed_start, transformed_end)
-        //             } else {
-        //                 (transformed_end, transformed_start)
-        //             };
-        //
-        //         let distance_along_segment = calculate_dist_for_two_points(
-        //             shortest_y_to_new,
-        //             shortest_y_to_current,
-        //             shortest_x_to_new,
-        //             shortest_x_to_current,
-        //         );
-        //
-        //         //Highest score is the best.
-        //         let (past_segment, score) =
-        //             if transformed_start <= comparison_val
-        //                 && comparison_val <= transformed_end
-        //             { //current location is inside segment
-        //
-        //                 let score = distance_along_segment - distance_to_segment;
-        //                 // println!("r {r} t {t} distance_along_segment: {distance_along_segment} distance_to_segment: {distance_to_segment} score: {score}");
-        //                 (false, score)
-        //             } else if comparison_val < transformed_start { //before start
-        //                 let distance_along_segment_from_start = calculate_dist_for_two_points(
-        //                     shortest_y_to_new,
-        //                     segment_start_point.y as f64,
-        //                     shortest_x_to_new,
-        //                     segment_start_point.x as f64,
-        //                 );
-        //                 let score = distance_along_segment - (distance_to_segment + distance_along_segment_from_start);
-        //                 (false, score)
-        //             } else { //after end
-        //                 let distance_along_segment_from_end = calculate_dist_for_two_points(
-        //                     shortest_y_to_new,
-        //                     segment_end_point.y as f64,
-        //                     shortest_x_to_new,
-        //                     segment_end_point.x as f64,
-        //                 );
-        //                 let score = distance_along_segment - (distance_to_segment + distance_along_segment_from_end);
-        //                 (true, score)
-        //             };
-        //
-        //         move_attempt[move_attempt_index] =
-        //             Some(
-        //                 ShuttleMoveAttempt {
-        //                     thrust: t,
-        //                     rotation: r,
-        //                     x: new_x,
-        //                     y: new_y,
-        //                     h_speed: new_h_speed,
-        //                     v_speed: new_v_speed,
-        //                     past_segment,
-        //                     score,
-        //                     fuel: fuel - t,
-        //                 }
-        //             );
-        //
-        //         move_attempt_index += 1;
-        //     }
-        // }
 
         //Put any value set to `None` at the end of the array. Order the rest by score in descending
         // order.
