@@ -528,6 +528,14 @@ fn run_single_move(
         // If the x is to the right, need + thrust
         // So, if I can make it TO the line, the rest of the thrust needs to go ALONG the line
 
+        //Get the ideal rotation to follow the line segment.
+        let ideal_segment_rotation =
+            get_shuttle_rotation_for_direction(
+                (end_point.x - start_point.x) as f64,
+                (end_point.y - start_point.y) as f64,
+                rotation as f64
+            );
+
         for t in min_possible_thrust..=max_possible_thrust {
             let test_thrust = t as f64;
 
@@ -557,23 +565,13 @@ fn run_single_move(
             let thrust_to_line = ((h_speed + raw_x_thrust_to_reach_line) + (v_speed + y_thrust_to_reach_line).powi(2)).sqrt() - (h_speed.powi(2) + v_speed.powi(2)).sqrt();
             // let ideal_thrust = (x_thrust_to_reach_line.powi(2) + y_thrust_to_reach_line.powi(2)).sqrt();
 
+            let velocity_magnitude = (v_speed.powi(2) + h_speed.powi(2)).sqrt();
+
             println!("thrust_to_line: {thrust_to_line}");
             //TODO: everything above this point can be outside the loop
 
-            //TODO: need to set this inside below block
-            let mut single_move_attempt = ShuttleMoveAttempt {
-                thrust: t,
-                rotation: 0,
-                x: current_x,
-                y: current_y,
-                h_speed,
-                v_speed,
-                past_segment: false,
-                score: 0.0,
-                fuel: fuel - t,
-            };
-
             let ideal_rotation =
+                //Must include the = sign because of zero thrust possibility.
                 if test_thrust <= thrust_to_line {
                     //If not enough thrust to reach the line, get as close as possible.
 
@@ -581,34 +579,20 @@ fn run_single_move(
                     let vector_x = shortest_x - current_x;
                     let vector_y = shortest_y - current_y;
 
-                    //Find the angle in degrees.
-                    let angle_in_degrees = (vector_y.abs() / vector_x.abs()).atan() * 180.0 / PI;
-
                     //Convert to rotation.
-                    let rot =
-                        if vector_x < 0.0 && vector_y <= 0.0 { //quadrant 3
-                            90.0
-                        } else if vector_x < 0.0 && vector_y > 0.0 { //quadrant 2
-                            90.0 - angle_in_degrees
-                        } else if vector_x > 0.0 && vector_y <= 0.0 { //quadrant 4
-                            -90.0
-                        } else if vector_x > 0.0 && vector_y > 0.0 { //quadrant 1
-                            -(90.0 - angle_in_degrees)
-                        } else if vector_x == 0.0 && vector_y == 0.0 {
-                            //TODO: orient with the line. literally call the same function lol
-                            // might be nice to just store the ideal rotation inside the line_ itself
-                            // then I could just grab the rotation.
-                            ()
-                        } else { // vector_x == 0.0
-                            0.0
-                        };
+                    let rotation =
+                        get_shuttle_rotation_for_direction(
+                            vector_x,
+                            vector_y,
+                            ideal_segment_rotation,
+                        );
 
-                    rot.round() as isize
+                    rotation.round() as isize
                 } else {
                     //If enough thrust to reach the line, use the remaining thrust to travel along it.
                     //TODO: there is actually a problem here, if say I need to go down and cannot have
                     // negative thrust on the y axis, then I could NOT reach the line.
-                    // Probably handle this by checking the the solution exists, if it does NOT just return
+                    // Probably handle this by checking if the solution exists, if it does NOT just return
                     //  the default values for moving towards the line. (go through below and look at places
                     //  it could `not exist`)
                     // OR better yet if I can't make it to the line, I just need to have a 90 or -90 rot.
@@ -616,7 +600,6 @@ fn run_single_move(
                     //TODO: put the math in for posterity(:()
 
                     let quad_const = line_equation.b - current_y + 3.711 / 2.0;
-                    let velocity_magnitude = (v_speed.powi(2) + h_speed.powi(2)).sqrt();
 
                     let quad_a = line_equation.m.powi(2) + 1.0;
                     let quad_b = 2.0 * line_equation.m * quad_const - 2.0 * current_x;
@@ -654,6 +637,7 @@ fn run_single_move(
 
                     //X thrust must be a positive value. However, it can go in either direction.
                     let thrust_x = raw_thrust_x.abs();
+
                     //Y thrust cannot be negative, it simply means that thrust along the y-axis is 0.
                     let thrust_y =
                         if raw_thrust_y < 0.0 {
@@ -678,6 +662,57 @@ fn run_single_move(
                 };
 
             println!("ideal_rotation: {ideal_rotation}");
+
+            let actual_rotation =
+                if (rotation - ideal_rotation).abs() <= 15 {
+                    ideal_rotation
+                } else if rotation < ideal_rotation {
+                    rotation + 15
+                } else { //rotation > ideal_rotation
+                    rotation - 15
+                };
+
+            // rot    angle
+            // 90  == 0
+            // 0   == 90
+            // -90 == 180
+            let polar_angle_radians = (90 - actual_rotation).abs() as f64 * PI/180.0;
+
+            //TODO: new_x, new_y, new_vx, new_ny
+            // past_segment, score
+
+            //Polar coordinates can be used.
+            // x = r * cos(O)
+            // y = r * sin(O)
+            //new_vx = (vi + thrust) * cos(polar_angle)
+            //new_vy = (vi + thrust) * sin(polar_angle)
+            //new_x - current_x = new_vx
+            //new_y - current_y = new_vy + a/2
+
+            let new_h_speed = (velocity_magnitude + test_thrust) * polar_angle_radians.cos();
+            let new_v_speed = (velocity_magnitude + test_thrust) * polar_angle_radians.sin();
+
+            let new_x = new_h_speed + current_x;
+            let new_y = new_v_speed - 3.711/2.0 + current_y;
+
+            println!("actual_rotation: {actual_rotation} polar_angle_radians: {polar_angle_radians}");
+            println!("new_vx: {new_vx} new_vy: {new_vy} new_v: {} new_x: {new_x} new_y: {new_y}", (new_h_speed.powi(2) + new_v_speed.powi(2)).sqrt());
+
+            //TODO: get score and past_segment
+
+            //TODO: need to set this inside below block
+            let mut single_move_attempt = ShuttleMoveAttempt {
+                thrust: t,
+                rotation: actual_rotation,
+                x: new_x,
+                y: new_y,
+                h_speed: new_h_speed,
+                v_speed: new_v_speed,
+                past_segment: false,
+                score: 0.0,
+                fuel: fuel - t,
+            };
+
             //TODO: I have the ideal move, now with these values I need to calculate what the
             // actual move will be
             //TODO: When calculating the score, I can check if it is passed the end of the segment
@@ -729,6 +764,30 @@ fn run_single_move(
     }
 
     MoveResult::Successful
+}
+
+fn get_shuttle_rotation_for_direction(
+    vector_x: f64,
+    vector_y: f64,
+    angle_for_zero_thrust: f64,
+) -> f64 {
+
+    //Find the angle in degrees.
+    let angle_in_degrees = (vector_y.abs() / vector_x.abs()).atan() * 180.0 / PI;
+
+    if vector_x < 0.0 && vector_y <= 0.0 { //quadrant 3
+        90.0
+    } else if vector_x < 0.0 && vector_y > 0.0 { //quadrant 2
+        90.0 - angle_in_degrees
+    } else if vector_x > 0.0 && vector_y <= 0.0 { //quadrant 4
+        -90.0
+    } else if vector_x > 0.0 && vector_y > 0.0 { //quadrant 1
+        -(90.0 - angle_in_degrees)
+    } else if vector_x == 0.0 && vector_y == 0.0 {
+        angle_for_zero_thrust
+    } else { // vector_x == 0.0
+        0.0
+    }
 }
 
 fn find_closest_point_on_line(
