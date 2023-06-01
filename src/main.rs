@@ -12,6 +12,8 @@ const SIZE_OF_SQUARES: i32 = 100;
 //Amount of distance to take into consideration between shuttle and ground for shortest path.
 const AMOUNT_OF_LEEWAY: f64 = 50.0;
 
+const MARS_GRAVITY_CONSTANT: f64 = -3.711;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Point {
     x: i32,
@@ -336,7 +338,7 @@ fn follow_path(
         0,
         0,
         0,
-        0,
+        1000,
     );
 
     move_list
@@ -385,7 +387,7 @@ fn run_single_move(
     number: isize,
     fuel: isize,
 ) -> MoveResult {
-    if number == 1 {
+    if number == 5 {
         return MoveResult::Successful;
     }
 
@@ -406,25 +408,7 @@ fn run_single_move(
                 thrust + 1
             };
 
-        let min_possible_rotation =
-            if rotation <= -75 {
-                rotation
-            } else {
-                rotation - 15
-            };
-
-        let max_possible_rotation =
-            if rotation >= 75 {
-                rotation
-            } else {
-                rotation + 15
-            };
-
-        let mut move_attempt_index = 0;
         let mut move_attempt: [Option<ShuttleMoveAttempt>; 93] = [None; 93]; //TODO: don't need 93
-
-        // println!("min_t: {} max_t: {}", min_possible_thrust, max_possible_thrust);
-        // println!("min_r: {} max_r: {}", min_possible_rotation, max_possible_rotation);
 
         let shuttle_path_element = &shuttle_path[shuttle_path_index];
 
@@ -497,7 +481,7 @@ fn run_single_move(
             };
 
         //TODO: may want to/need to handle before start and after end differently
-        let (distance_to_segment, shortest_x_pos, shortest_y_pos) =
+        let (distance_to_segment, shortest_x, shortest_y) =
             if transformed_start <= comparison_val
                 && comparison_val <= transformed_end
             { //current location is inside segment
@@ -520,59 +504,63 @@ fn run_single_move(
                 (distance_to_end, end_point.x as f64, end_point.y as f64)
             };
 
-        //TODO: At this point I have the distance to the point and the x and y coords of the point
-        // I need to see the thrust required to get there on the x and the y axis
-        // If the y is above me, it will take a certain thrust
-        // If the y is below me, I want no y thrust (-90 or 90 will be ideal)
-        // If the x is to the left,  need - thrust
-        // If the x is to the right, need + thrust
-        // So, if I can make it TO the line, the rest of the thrust needs to go ALONG the line
-
-        //Get the ideal rotation to follow the line segment.
+        //Get the `ideal` rotation to follow the line segment.
         let ideal_segment_rotation =
             get_shuttle_rotation_for_direction(
                 (end_point.x - start_point.x) as f64,
                 (end_point.y - start_point.y) as f64,
-                rotation as f64
+                rotation as f64,
             );
+
+        //|a|^2 = ax^2 + ay^2
+        //ax = 0
+        //|a| = ay.abs()
+        let acceleration_magnitude = MARS_GRAVITY_CONSTANT.abs();
 
         for t in min_possible_thrust..=max_possible_thrust {
             let test_thrust = t as f64;
 
-            //Dy = (viy+thrust) + a/2
-            //thrust = Dy - viy - a/2
-            let raw_y_thrust_to_reach_line = shortest_y_pos - current_y - v_speed + 3.711 / 2.0;
+            //TODO: probably make this stuff below a function
 
-            //The rotation on the shuttle goes from -90 to 90, the thrust for this can never
-            // go down.
-            let y_thrust_to_reach_line =
-                if raw_y_thrust_to_reach_line < 0.0 {
-                    0.0
-                } else {
-                    raw_y_thrust_to_reach_line
-                };
+            // rot    angle
+            // -90 == 0
+            // 0   == 90
+            // 90  == 180
+            let polar_angle_radians = (90.0 + ideal_segment_rotation) * PI / 180.0;
 
-            //Dx = (vix+thrust) + a/2
-            //thrust = Dx - vix - a/2
-            let raw_x_thrust_to_reach_line = shortest_x_pos - current_x - h_speed;
+            //Polar coordinates.
+            // x = r * cos(O)
+            // y = r * sin(O)
+            //new_ax = (|a| + thrust) * cos(polar_angle)
+            //new_ay = (|a| + thrust) * sin(polar_angle)
+            let new_ax = test_thrust * polar_angle_radians.cos();
+            let new_ay = test_thrust * polar_angle_radians.sin() + MARS_GRAVITY_CONSTANT;
 
-            //|v|^2 = vx^2 + vy^2
-            //(|v| + t)^2 = (vx + tx)^2 + (vy + ty)^2
-            //t = sqrt((vx + tx)^2 + (vy + ty)^2) - sqrt(vx^2 + vy^2)
-            //TODO: unsure how to leverage x_thrust, if tx brings vx down OR if ty brings vy down, then the first sqrt
-            // will be smaller than the second one causing a negative value to be returned. I could just subtract whichever
-            // one is larger from the other, I could force the signs to be negative then abs the final value
-            let thrust_to_line = ((h_speed + raw_x_thrust_to_reach_line) + (v_speed + y_thrust_to_reach_line).powi(2)).sqrt() - (h_speed.powi(2) + v_speed.powi(2)).sqrt();
-            // let ideal_thrust = (x_thrust_to_reach_line.powi(2) + y_thrust_to_reach_line.powi(2)).sqrt();
+            //Kinematics
+            //vf = vi + a
+            //new_vx = vx + new_ax
+            //new_vy = vy + new_ay
+            let new_h_speed = h_speed + new_ax;
+            let new_v_speed = v_speed + new_ay;
 
-            let velocity_magnitude = (v_speed.powi(2) + h_speed.powi(2)).sqrt();
+            //Kinematics
+            //Dx = vi + a/2
+            //new_x - current_x = new_vx + new_ax/2
+            //new_y - current_y = new_vy + new_ay/2
+            let new_x = new_h_speed + current_x + new_ax/2.0;
+            let new_y = new_v_speed + current_y + new_ay/2.0;
 
-            println!("thrust_to_line: {thrust_to_line}");
+            //distance formula
+            let distance_traveled_along_segment = ((new_x - current_x).powi(2) + (new_y - current_y).powi(2)).sqrt();
+
+            println!("distance_traveled_along_segment: {distance_traveled_along_segment} distance_to_segment: {distance_to_segment}");
+            println!("ideal_segment_rotation: {ideal_segment_rotation}");
+
             //TODO: everything above this point can be outside the loop
 
             let ideal_rotation =
                 //Must include the = sign because of zero thrust possibility.
-                if test_thrust <= thrust_to_line {
+                if distance_traveled_along_segment <= distance_to_segment {
                     //If not enough thrust to reach the line, get as close as possible.
 
                     //Convert it to a vector.
@@ -597,13 +585,36 @@ fn run_single_move(
                     //  it could `not exist`)
                     // OR better yet if I can't make it to the line, I just need to have a 90 or -90 rot.
 
-                    //TODO: put the math in for posterity(:()
+                    //yf = m*xf + b
+                    //xf - xi = vx + tx/2
+                    //yf - yi = yv + (ay + ty)/2
+                    //(|a| + t)^2 = (ax + tx)^2 + (ay + ty)^2
+                    //|a|^2 = ax^2 + ay^2
 
-                    let quad_const = line_equation.b - current_y + 3.711 / 2.0;
+                    //ax = 0
+                    //|a| = ay
+                    //(|a|+t)^2 = tx^2 + (2*(yf - yi - vy))^2
+                    //(|a|+t)^2 = (2*(xf-xi-vx))^2 + (2*(yf-yi-vy))^2
+                    //(|a|+t)^2 = 4*((xf-xi-vx)^2 + (m*xf+b-yi-vy)^2)
+                    //u = (|a|+t)^2
+                    //w = xi - vx
+                    //d = b - yi - vy
+                    //u = 4*((xf - w)^2 + (m*xf + d)^2)
+                    //u/4 = xf^2 - 2*xf*w + w^2 + m^2*xf^2 + 2*m*xf*d + d^2
+                    //u/4 = xf^2 * (1 + m^2) + xf * (2*m*d - 2*w) + w^2 + d^2
+                    //0 = xf^2 * (1 + m^2) + xf * (2*m*d - 2*w) + w^2 + d^2 - u/4
+
+                    //a = 1 + m^2
+                    //b = 2*m*d - 2*w
+                    //c = w^2 + d^2 - u/4
+
+                    let quad_u = (acceleration_magnitude + test_thrust).powi(2);
+                    let quad_w = current_x + h_speed;
+                    let quad_d = line_equation.b - current_y - v_speed;
 
                     let quad_a = line_equation.m.powi(2) + 1.0;
-                    let quad_b = 2.0 * line_equation.m * quad_const - 2.0 * current_x;
-                    let quad_c = current_x.powi(2) + quad_const.powi(2) - (velocity_magnitude + test_thrust).powi(2);
+                    let quad_b = 2.0 * line_equation.m * quad_d - 2.0 * quad_w;
+                    let quad_c = quad_w.powi(2) + quad_d.powi(2) - quad_u / 4.0;
 
                     // (-B +/- sqrt(B^2 - 4 * A * C)) / (2 * A)
                     //Because the thrust is always checked to be enough to get to the line before
@@ -630,10 +641,16 @@ fn run_single_move(
                             0.0
                         };
 
+                    //y = mx + b
                     let new_y_pos = line_equation.m * new_x_pos + line_equation.b;
 
-                    let raw_thrust_x = new_x_pos - current_x - h_speed;
-                    let raw_thrust_y = new_y_pos - current_y - v_speed + 3.711 / 2.0;
+                    //Dx = vx + tx/2
+                    //tx = 2 * (Dx - vx)
+                    let raw_thrust_x = 2.0 * (new_x_pos - current_x - h_speed);
+
+                    //Dy = viy + (a + ty)/2
+                    //ty = 2*Dy - 2*viy - a
+                    let raw_thrust_y = 2.0 * (new_y_pos - current_y - v_speed) - MARS_GRAVITY_CONSTANT;
 
                     //X thrust must be a positive value. However, it can go in either direction.
                     let thrust_x = raw_thrust_x.abs();
@@ -656,7 +673,7 @@ fn run_single_move(
                             raw_ideal_rotation
                         };
 
-                    println!("new_x_pos: {new_x_pos} new_y_pos: {new_y_pos} rotation: {rotation} test_thrust: {test_thrust}");
+                    // println!("new_x_pos: {new_x_pos} new_y_pos: {new_y_pos} rotation: {rotation} test_thrust: {test_thrust}");
 
                     rotation
                 };
@@ -673,54 +690,146 @@ fn run_single_move(
                 };
 
             // rot    angle
-            // 90  == 0
+            // -90 == 0
             // 0   == 90
-            // -90 == 180
-            let polar_angle_radians = (90 - actual_rotation).abs() as f64 * PI/180.0;
+            // 90  == 180
 
-            //TODO: new_x, new_y, new_vx, new_ny
-            // past_segment, score
+            let polar_angle_radians = (90 + actual_rotation) as f64 * PI / 180.0;
 
-            //Polar coordinates can be used.
+            //Polar coordinates.
             // x = r * cos(O)
             // y = r * sin(O)
-            //new_vx = (vi + thrust) * cos(polar_angle)
-            //new_vy = (vi + thrust) * sin(polar_angle)
-            //new_x - current_x = new_vx
-            //new_y - current_y = new_vy + a/2
+            //new_ax = thrust * cos(polar_angle)
+            //new_ay = thrust * sin(polar_angle) + gravity
+            let new_ax = test_thrust * polar_angle_radians.cos();
+            let new_ay = test_thrust * polar_angle_radians.sin() + MARS_GRAVITY_CONSTANT;
 
-            let new_h_speed = (velocity_magnitude + test_thrust) * polar_angle_radians.cos();
-            let new_v_speed = (velocity_magnitude + test_thrust) * polar_angle_radians.sin();
+            //Kinematics
+            //vf = vi + a
+            //new_vx = vx + new_ax
+            //new_vy = vy + new_ay
+            let new_h_speed = h_speed + new_ax;
+            let new_v_speed = v_speed + new_ay;
 
-            let new_x = new_h_speed + current_x;
-            let new_y = new_v_speed - 3.711/2.0 + current_y;
+            //Kinematics
+            //Dx = vi + a/2
+            //new_x - current_x = new_vx + new_ax/2
+            //new_y - current_y = new_vy + new_ay/2
+            let new_x = new_h_speed + current_x + new_ax/2.0;
+            let new_y = new_v_speed + current_y + new_ay/2.0;
 
             println!("actual_rotation: {actual_rotation} polar_angle_radians: {polar_angle_radians}");
-            println!("new_vx: {new_vx} new_vy: {new_vy} new_v: {} new_x: {new_x} new_y: {new_y}", (new_h_speed.powi(2) + new_v_speed.powi(2)).sqrt());
+            println!("t: {t} new_ax: {new_ax} new_ay: {new_ay} old_vx: {h_speed} old_vy: {v_speed} new_vx: {new_h_speed} new_vy: {new_v_speed} new_v: {} new_x: {new_x} new_y: {new_y}", (new_h_speed.powi(2) + new_v_speed.powi(2)).sqrt());
 
-            //TODO: get score and past_segment
+            let (shortest_x_to_new, shortest_y_to_new) = find_closest_point_on_line(
+                new_x,
+                new_y,
+                line_equation,
+                start_point.x,
+            );
 
-            //TODO: need to set this inside below block
-            let mut single_move_attempt = ShuttleMoveAttempt {
+            let (shortest_x_to_current, shortest_y_to_current) = find_closest_point_on_line(
+                current_x,
+                current_y,
+                line_equation,
+                start_point.x,
+            );
+
+            let distance_to_segment = calculate_dist_for_two_points(
+                shortest_y_to_new,
+                new_y,
+                shortest_x_to_new,
+                new_x,
+            );
+
+            let (transformed_start, transformed_end, comparison_val) =
+                if line_equation.m.is_infinite() { //vertical line
+                    let multiplier =
+                        if new_y < shortest_y_to_new {
+                            -1.0
+                        } else {
+                            1.0
+                        };
+
+                    let transformed_start_y = start_point.y as f64 * multiplier;
+                    let transformed_end_y = end_point.y as f64 * multiplier;
+                    (transformed_start_y, transformed_end_y, new_y)
+                } else {
+                    let perpendicular_m = -1.0 / line_equation.m;
+
+                    let delta_x = distance_to_segment / (perpendicular_m * perpendicular_m + 1.0).sqrt();
+                    let multiplier =
+                        if new_x < shortest_x_to_new {
+                            -1.0
+                        } else {
+                            1.0
+                        };
+
+                    let transformed_start_x = start_point.x as f64 + (multiplier * delta_x);
+                    let transformed_end_x = end_point.x as f64 + (multiplier * delta_x);
+                    (transformed_start_x, transformed_end_x, new_x)
+                };
+
+            let (transformed_start, transformed_end) =
+                if transformed_start <= transformed_end {
+                    (transformed_start, transformed_end)
+                } else {
+                    (transformed_end, transformed_start)
+                };
+
+            let distance_along_segment = calculate_dist_for_two_points(
+                shortest_y_to_new,
+                shortest_y_to_current,
+                shortest_x_to_new,
+                shortest_x_to_current,
+            );
+
+            //Highest score is the best.
+            let (past_segment, score) =
+                if transformed_start <= comparison_val
+                    && comparison_val <= transformed_end
+                { //current location is inside segment
+                    let score = distance_along_segment - distance_to_segment;
+                    // println!("r {actual_rotation} t {t} distance_along_segment: {distance_along_segment} distance_to_segment: {distance_to_segment} score: {score}");
+                    (false, score)
+                } else if comparison_val < transformed_start { //before start
+                    let distance_along_segment_from_start = calculate_dist_for_two_points(
+                        shortest_y_to_new,
+                        start_point.y as f64,
+                        shortest_x_to_new,
+                        start_point.x as f64,
+                    );
+                    println!("before start");
+                    let score = distance_along_segment - (distance_to_segment + distance_along_segment_from_start);
+                    (false, score)
+                } else { //after end
+                    let distance_along_segment_from_end = calculate_dist_for_two_points(
+                        shortest_y_to_new,
+                        end_point.y as f64,
+                        shortest_x_to_new,
+                        end_point.x as f64,
+                    );
+                    println!("after end");
+                    let score = distance_along_segment - (distance_to_segment + distance_along_segment_from_end);
+                    (true, score)
+                };
+
+            let single_move_attempt = ShuttleMoveAttempt {
                 thrust: t,
                 rotation: actual_rotation,
                 x: new_x,
                 y: new_y,
                 h_speed: new_h_speed,
                 v_speed: new_v_speed,
-                past_segment: false,
-                score: 0.0,
+                past_segment,
+                score,
                 fuel: fuel - t,
             };
 
-            //TODO: I have the ideal move, now with these values I need to calculate what the
-            // actual move will be
-            //TODO: When calculating the score, I can check if it is passed the end of the segment
-            // actually if it is passed the segment is already calculated above
-            // move_attempt[(t - min_possible_thrust) as usize] =
-            //     Some(
-            //         single_move_attempt
-            //     );
+            println!("score: {score}");
+
+            move_attempt[(t - min_possible_thrust) as usize] =
+                Some(single_move_attempt);
         }
 
         //Put any value set to `None` at the end of the array. Order the rest by score in descending
