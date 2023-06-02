@@ -387,7 +387,7 @@ fn run_single_move(
     number: isize,
     fuel: isize,
 ) -> MoveResult {
-    if number == 5 {
+    if number == 250 {
         return MoveResult::Successful;
     }
 
@@ -520,43 +520,20 @@ fn run_single_move(
         for t in min_possible_thrust..=max_possible_thrust {
             let test_thrust = t as f64;
 
-            //TODO: probably make this stuff below a function
-
-            // rot    angle
-            // -90 == 0
-            // 0   == 90
-            // 90  == 180
-            let polar_angle_radians = (90.0 + ideal_segment_rotation) * PI / 180.0;
-
-            //Polar coordinates.
-            // x = r * cos(O)
-            // y = r * sin(O)
-            //new_ax = (|a| + thrust) * cos(polar_angle)
-            //new_ay = (|a| + thrust) * sin(polar_angle)
-            let new_ax = test_thrust * polar_angle_radians.cos();
-            let new_ay = test_thrust * polar_angle_radians.sin() + MARS_GRAVITY_CONSTANT;
-
-            //Kinematics
-            //vf = vi + a
-            //new_vx = vx + new_ax
-            //new_vy = vy + new_ay
-            let new_h_speed = h_speed + new_ax;
-            let new_v_speed = v_speed + new_ay;
-
-            //Kinematics
-            //Dx = vi + a/2
-            //new_x - current_x = new_vx + new_ax/2
-            //new_y - current_y = new_vy + new_ay/2
-            let new_x = new_h_speed + current_x + new_ax/2.0;
-            let new_y = new_v_speed + current_y + new_ay/2.0;
+            let (new_x, new_y, _new_h_speed, _new_v_speed) = convert_rotation_and_thrust_to_coords(
+                current_x,
+                current_y,
+                h_speed,
+                v_speed,
+                ideal_segment_rotation,
+                test_thrust
+            );
 
             //distance formula
             let distance_traveled_along_segment = ((new_x - current_x).powi(2) + (new_y - current_y).powi(2)).sqrt();
 
             println!("distance_traveled_along_segment: {distance_traveled_along_segment} distance_to_segment: {distance_to_segment}");
             println!("ideal_segment_rotation: {ideal_segment_rotation}");
-
-            //TODO: everything above this point can be outside the loop
 
             let ideal_rotation =
                 //Must include the = sign because of zero thrust possibility.
@@ -678,7 +655,6 @@ fn run_single_move(
                     rotation
                 };
 
-            println!("ideal_rotation: {ideal_rotation}");
 
             let actual_rotation =
                 if (rotation - ideal_rotation).abs() <= 15 {
@@ -689,37 +665,16 @@ fn run_single_move(
                     rotation - 15
                 };
 
-            // rot    angle
-            // -90 == 0
-            // 0   == 90
-            // 90  == 180
+            println!("actual_rotation: {actual_rotation} ideal_rotation: {ideal_rotation}");
 
-            let polar_angle_radians = (90 + actual_rotation) as f64 * PI / 180.0;
-
-            //Polar coordinates.
-            // x = r * cos(O)
-            // y = r * sin(O)
-            //new_ax = thrust * cos(polar_angle)
-            //new_ay = thrust * sin(polar_angle) + gravity
-            let new_ax = test_thrust * polar_angle_radians.cos();
-            let new_ay = test_thrust * polar_angle_radians.sin() + MARS_GRAVITY_CONSTANT;
-
-            //Kinematics
-            //vf = vi + a
-            //new_vx = vx + new_ax
-            //new_vy = vy + new_ay
-            let new_h_speed = h_speed + new_ax;
-            let new_v_speed = v_speed + new_ay;
-
-            //Kinematics
-            //Dx = vi + a/2
-            //new_x - current_x = new_vx + new_ax/2
-            //new_y - current_y = new_vy + new_ay/2
-            let new_x = new_h_speed + current_x + new_ax/2.0;
-            let new_y = new_v_speed + current_y + new_ay/2.0;
-
-            println!("actual_rotation: {actual_rotation} polar_angle_radians: {polar_angle_radians}");
-            println!("t: {t} new_ax: {new_ax} new_ay: {new_ay} old_vx: {h_speed} old_vy: {v_speed} new_vx: {new_h_speed} new_vy: {new_v_speed} new_v: {} new_x: {new_x} new_y: {new_y}", (new_h_speed.powi(2) + new_v_speed.powi(2)).sqrt());
+            let (new_x, new_y, new_h_speed, new_v_speed) = convert_rotation_and_thrust_to_coords(
+                current_x,
+                current_y,
+                h_speed,
+                v_speed,
+                actual_rotation as f64,
+                test_thrust
+            );
 
             let (shortest_x_to_new, shortest_y_to_new) = find_closest_point_on_line(
                 new_x,
@@ -785,7 +740,7 @@ fn run_single_move(
             );
 
             //Highest score is the best.
-            let (past_segment, score) =
+            let (past_segment, mut score) =
                 if transformed_start <= comparison_val
                     && comparison_val <= transformed_end
                 { //current location is inside segment
@@ -813,6 +768,20 @@ fn run_single_move(
                     let score = distance_along_segment - (distance_to_segment + distance_along_segment_from_end);
                     (true, score)
                 };
+
+            //Lets say that every value over max-3 is lost points.
+            let subtraction_from_max: f64 = 5.0;
+            let new_h_speed_abs = new_h_speed.abs();
+            let new_v_speed_abs = new_v_speed.abs();
+
+            //TODO: exactly what should the score be subtracted from?
+            if new_h_speed_abs > (20.0 - subtraction_from_max) {
+               score -= 6.0 * (new_h_speed_abs - 20.0 - subtraction_from_max);
+            }
+
+            if new_v_speed_abs > (40.0 - subtraction_from_max) {
+                score -= 6.0 * ( new_v_speed_abs - 40.0 - subtraction_from_max);
+            }
 
             let single_move_attempt = ShuttleMoveAttempt {
                 thrust: t,
@@ -873,6 +842,48 @@ fn run_single_move(
     }
 
     MoveResult::Successful
+}
+
+fn convert_rotation_and_thrust_to_coords(
+    current_x: f64,
+    current_y: f64,
+    h_speed: f64,
+    v_speed: f64,
+    ideal_segment_rotation: f64,
+    test_thrust: f64
+) -> (f64, f64, f64, f64) {
+
+    // rot    angle
+    // -90 == 0
+    // 0   == 90
+    // 90  == 180
+    let polar_angle_radians = (90.0 + ideal_segment_rotation) * PI / 180.0;
+
+    //Polar coordinates.
+    // x = r * cos(O)
+    // y = r * sin(O)
+    //new_ax = (|a| + thrust) * cos(polar_angle)
+    //new_ay = (|a| + thrust) * sin(polar_angle)
+    let new_ax = test_thrust * polar_angle_radians.cos();
+    let new_ay = test_thrust * polar_angle_radians.sin() + MARS_GRAVITY_CONSTANT;
+
+    //Kinematics
+    //vf = vi + a
+    //new_vx = vx + new_ax
+    //new_vy = vy + new_ay
+    let new_h_speed = h_speed + new_ax;
+    let new_v_speed = v_speed + new_ay;
+
+    //Kinematics
+    //Dx = vi + a/2
+    //new_x - current_x = new_vx + new_ax/2
+    //new_y - current_y = new_vy + new_ay/2
+    let new_x = new_h_speed + current_x + new_ax / 2.0;
+    let new_y = new_v_speed + current_y + new_ay / 2.0;
+
+    println!("polar_angle_radians: {polar_angle_radians}");
+    println!("new_ax: {new_ax} new_ay: {new_ay} old_vx: {h_speed} old_vy: {v_speed} new_vx: {new_h_speed} new_vy: {new_v_speed} new_v: {} new_x: {new_x} new_y: {new_y}", (new_h_speed.powi(2) + new_v_speed.powi(2)).sqrt());
+    (new_x, new_y, new_h_speed, new_v_speed)
 }
 
 fn get_shuttle_rotation_for_direction(
