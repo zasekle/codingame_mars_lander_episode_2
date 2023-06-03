@@ -387,7 +387,7 @@ fn run_single_move(
     number: isize,
     fuel: isize,
 ) -> MoveResult {
-    if number == 250 {
+    if number == 170 {
         return MoveResult::Successful;
     }
 
@@ -516,6 +516,14 @@ fn run_single_move(
         //ax = 0
         //|a| = ay.abs()
         let acceleration_magnitude = MARS_GRAVITY_CONSTANT.abs();
+
+        //TODO: Right now I get the `drunk` behavior they talk about with the PID controller.
+        // This means I have the variable P already setup
+        //TODO: I actually have two things I need to be concerned with
+        // 1) Following the path.
+        // 2) Making sure it doesn't go too fast.
+        // Might want to use `Catmull-Rom Splines` to make some smooth curves.
+        // Need to figure out the 2 algorithms better then just follow the smooth curve closely.
 
         for t in min_possible_thrust..=max_possible_thrust {
             let test_thrust = t as f64;
